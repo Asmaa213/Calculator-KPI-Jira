@@ -39,7 +39,7 @@ class MainWindow:
         self.button_frame_evolution = ttk.Frame(self.tab_evolution)
         self.button_frame_evolution.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-        self.input_button_evolution = ttk.Button(self.button_frame_evolution, text="Actualiser information", command=self.open_input_window)
+        self.input_button_evolution = ttk.Button(self.button_frame_evolution, text="Actualiser information", command=self.open_input_window_evolution)
         self.input_button_evolution.pack(side=tk.LEFT, padx=5)
 
         self.export_button_evolution = ttk.Button(self.button_frame_evolution, text="Exporter à Excel", command=self.export_results)
@@ -64,7 +64,7 @@ class MainWindow:
         self.right_frame_evolution.pack(side=tk.RIGHT, fill='y', padx=5, pady=5)
 
         # Ajouter les champs d'efficience
-        ttk.Label(self.right_frame_evolution, text="EFFICACITÉ").pack(anchor=tk.W, padx=5, pady=5)
+        ttk.Label(self.right_frame_evolution, text="EFFICIENCE").pack(anchor=tk.W, padx=5, pady=5)
 
         labels = [
             "Estimation accumulée (H)",
@@ -86,38 +86,27 @@ class MainWindow:
         self.button_frame_correction = ttk.Frame(self.tab_correction)
         self.button_frame_correction.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-        self.input_button_correction = ttk.Button(self.button_frame_correction, text="Actualiser information", command=self.open_input_window)
+        self.input_button_correction = ttk.Button(self.button_frame_correction, text="Actualiser information", command=self.open_input_window_correction)
         self.input_button_correction.pack(side=tk.LEFT, padx=5)
 
         self.export_button_correction = ttk.Button(self.button_frame_correction, text="Exporter à Excel", command=self.export_results)
         self.export_button_correction.pack(side=tk.LEFT, padx=5)
 
-        self.combobox_label2 = ttk.Label(self.tab_correction, text="Projets:")
-        self.combobox_label2.pack(anchor=tk.W, padx=5, pady=5)
+        # Cadre principal de l'onglet évolution
+        self.main_frame_correction = ttk.Frame(self.tab_correction)
+        self.main_frame_correction.pack(expand=True, fill='both', padx=5, pady=5)
 
-        self.options2 = ['Projet X', 'Projet Y', 'Projet Z']
-        self.combobox2 = ttk.Combobox(self.tab_correction, values=self.options2, state='readonly')
-        self.combobox2.pack(anchor=tk.W, padx=5, pady=5)
+        # Cadre de gauche pour les détails Jira
+        self.left_frame_correction = ttk.Frame(self.main_frame_correction)
+        self.left_frame_correction.pack(side=tk.LEFT, expand=True, fill='both', padx=5, pady=5)
 
-        self.date_frame = ttk.Frame(self.tab_correction)
-        self.date_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
+        self.filter_label1 = ttk.Label(self.left_frame_correction, text="Jira errors:")
+        self.filter_label1.pack(anchor=tk.W, padx=5, pady=5)
 
-        self.date_label_start = ttk.Label(self.date_frame, text="Start Date:")
-        self.date_label_start.pack(side=tk.LEFT, padx=5, pady=5)
+        self.result_text2 = tk.Text(self.left_frame_correction, height=20, width=80)
+        self.result_text2.pack(anchor=tk.W, padx=5, pady=5, expand=True, fill=tk.BOTH)
 
-        self.date_start = DateEntry(self.date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
-        self.date_start.pack(side=tk.LEFT, padx=5, pady=5)
-
-        self.date_label_end = ttk.Label(self.date_frame, text="End Date:")
-        self.date_label_end.pack(side=tk.LEFT, padx=5, pady=5)
-
-        self.date_end = DateEntry(self.date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
-        self.date_end.pack(side=tk.LEFT, padx=5, pady=5)
-
-        self.submit_button = ttk.Button(self.tab_correction, text="Submit", command=self.submit_correction)
-        self.submit_button.pack(anchor=tk.W, padx=5, pady=5)
-
-    def open_input_window(self):
+    def open_input_window_correction(self):
         # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
         input_window = tk.Toplevel(self.root)
         input_window.title("Entrer les informations")
@@ -148,6 +137,51 @@ class MainWindow:
         submit_button_correction = ttk.Button(input_window, text="Submit", command=self.submit_correction)
         submit_button_correction.pack(anchor=tk.W, padx=5, pady=5)
 
+    def open_input_window_evolution(self):
+    # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
+        input_window1 = tk.Toplevel(self.root)
+        input_window1.title("Entrer les informations")
+
+        # Cadre pour les combobox
+        combobox_frame = ttk.Frame(input_window1)
+        combobox_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
+
+        # Combobox pour les projets
+        combobox_label2 = ttk.Label(combobox_frame, text="Projets:")
+        combobox_label2.pack(side=tk.LEFT, padx=5, pady=5)
+
+        options2 = ['Projet X', 'Projet Y', 'Projet Z']
+        combobox2 = ttk.Combobox(combobox_frame, values=options2, state='readonly')
+        combobox2.pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Combobox pour le nom d'utilisateur
+        combobox_label = ttk.Label(combobox_frame, text="User's full name:")
+        combobox_label.pack(side=tk.LEFT, padx=5, pady=5)
+
+        options = ['User X', 'User Y', 'User Z']
+        combobox = ttk.Combobox(combobox_frame, values=options, state='readonly')
+        combobox.pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Cadre pour les dates
+        date_frame = ttk.Frame(input_window1)
+        date_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
+
+        date_label_start = ttk.Label(date_frame, text="Start Date:")
+        date_label_start.pack(side=tk.LEFT, padx=5, pady=5)
+
+        date_start = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
+        date_start.pack(side=tk.LEFT, padx=5, pady=5)
+
+        date_label_end = ttk.Label(date_frame, text="End Date:")
+        date_label_end.pack(side=tk.LEFT, padx=5, pady=5)
+
+        date_end = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
+        date_end.pack(side=tk.LEFT, padx=5, pady=5)
+
+        submit_button_evolution = ttk.Button(input_window1, text="Submit", command= self.submit_evolution)
+        submit_button_evolution.pack(anchor=tk.W, padx=5, pady=5)
+
+
     def search_evolution(self):
         # Logique pour l'onglet "L'évolution"
         jql = self.filter_entry1.get()
@@ -163,6 +197,11 @@ class MainWindow:
     def submit_correction(self):
         # Logique pour le bouton "Submit" de l'onglet "La correction"
         messagebox.showinfo("Submit", "Correction submitted")
+
+    def submit_evolution(self):
+        # Logique pour le bouton "Submit" de l'onglet "L'evolution"
+        messagebox.showinfo("Submit", "Evolution submitted")
+
 
     def export_results(self):
         # Logique pour exporter les résultats
