@@ -1,2 +1,2 @@
-JIRA_URL = 'https://votre-instance-jira/rest/api/2/search'
-AUTH = ('votre-email', 'votre-token-api')
+JIRA_URL = 'https://asmaaabdouni2001.atlassian.net/rest/api/2'
+AUTH = ('asmaaabdouni2001@gmail.com', 'ATATT3xFfGF0Ae0ravA2XMmMJE85d6x771j4bvZQg2cZwIyOIciEu3MVqezHK3LOPvwkOuz3Op1fINPNsrcEpLbfPeh45qseksiynMnlkC1J264QdmHn50x-hub3EqbwZbYboMhzpSP7OmXykMu8ZBabGe9zr7ECPvAU3YUO3GGttsLUkHwTyjE=14A4DA5F')

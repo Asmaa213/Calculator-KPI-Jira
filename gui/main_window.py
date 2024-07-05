@@ -6,9 +6,10 @@ import pandas as pd
 import os
 
 class MainWindow:
-    def __init__(self):
+    def __init__(self, projects):
         self.root = tk.Tk()
         self.root.title("Jira Data Extractor")
+        self.projects = projects  # Store the projects
         self.create_widgets()
         self.root.mainloop()
 
@@ -92,7 +93,7 @@ class MainWindow:
         self.export_button_correction = ttk.Button(self.button_frame_correction, text="Exporter à Excel", command=self.export_results)
         self.export_button_correction.pack(side=tk.LEFT, padx=5)
 
-        # Cadre principal de l'onglet évolution
+        # Cadre principal de l'onglet correction
         self.main_frame_correction = ttk.Frame(self.tab_correction)
         self.main_frame_correction.pack(expand=True, fill='both', padx=5, pady=5)
 
@@ -100,8 +101,8 @@ class MainWindow:
         self.left_frame_correction = ttk.Frame(self.main_frame_correction)
         self.left_frame_correction.pack(side=tk.LEFT, expand=True, fill='both', padx=5, pady=5)
 
-        self.filter_label1 = ttk.Label(self.left_frame_correction, text="Jira errors:")
-        self.filter_label1.pack(anchor=tk.W, padx=5, pady=5)
+        self.filter_label2 = ttk.Label(self.left_frame_correction, text="Jira errors:")
+        self.filter_label2.pack(anchor=tk.W, padx=5, pady=5)
 
         self.result_text2 = tk.Text(self.left_frame_correction, height=20, width=80)
         self.result_text2.pack(anchor=tk.W, padx=5, pady=5, expand=True, fill=tk.BOTH)
@@ -111,14 +112,19 @@ class MainWindow:
         input_window = tk.Toplevel(self.root)
         input_window.title("Entrer les informations")
 
-        # Widgets spécifiques à l'onglet "La correction"
-        combobox_label2 = ttk.Label(input_window, text="Projets:")
-        combobox_label2.pack(anchor=tk.W, padx=5, pady=5)
+        # Cadre pour les combobox
+        combobox_frame = ttk.Frame(input_window)
+        combobox_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
 
-        options2 = ['Projet X', 'Projet Y', 'Projet Z']
-        combobox2 = ttk.Combobox(input_window, values=options2, state='readonly')
-        combobox2.pack(anchor=tk.W, padx=5, pady=5)
+        # Combobox pour les projets
+        combobox_label2 = ttk.Label(combobox_frame, text="Projets:")
+        combobox_label2.pack(side=tk.LEFT, padx=5, pady=5)
 
+        project_names = [project['name'] for project in self.projects]
+        combobox2 = ttk.Combobox(combobox_frame, values=project_names, state='readonly')
+        combobox2.pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Cadre pour les dates
         date_frame = ttk.Frame(input_window)
         date_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
 
@@ -138,7 +144,7 @@ class MainWindow:
         submit_button_correction.pack(anchor=tk.W, padx=5, pady=5)
 
     def open_input_window_evolution(self):
-    # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
+        # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
         input_window1 = tk.Toplevel(self.root)
         input_window1.title("Entrer les informations")
 
@@ -150,8 +156,8 @@ class MainWindow:
         combobox_label2 = ttk.Label(combobox_frame, text="Projets:")
         combobox_label2.pack(side=tk.LEFT, padx=5, pady=5)
 
-        options2 = ['Projet X', 'Projet Y', 'Projet Z']
-        combobox2 = ttk.Combobox(combobox_frame, values=options2, state='readonly')
+        project_names = [project['name'] for project in self.projects]
+        combobox2 = ttk.Combobox(combobox_frame, values=project_names, state='readonly')
         combobox2.pack(side=tk.LEFT, padx=5, pady=5)
 
         # Combobox pour le nom d'utilisateur
@@ -178,9 +184,8 @@ class MainWindow:
         date_end = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
         date_end.pack(side=tk.LEFT, padx=5, pady=5)
 
-        submit_button_evolution = ttk.Button(input_window1, text="Submit", command= self.submit_evolution)
+        submit_button_evolution = ttk.Button(input_window1, text="Submit", command=self.submit_evolution)
         submit_button_evolution.pack(anchor=tk.W, padx=5, pady=5)
-
 
     def search_evolution(self):
         # Logique pour l'onglet "L'évolution"
@@ -201,7 +206,6 @@ class MainWindow:
     def submit_evolution(self):
         # Logique pour le bouton "Submit" de l'onglet "L'evolution"
         messagebox.showinfo("Submit", "Evolution submitted")
-
 
     def export_results(self):
         # Logique pour exporter les résultats
