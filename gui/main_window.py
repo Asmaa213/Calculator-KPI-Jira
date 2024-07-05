@@ -10,7 +10,7 @@ class MainWindow:
     def __init__(self, projects):
         self.root = tk.Tk()
         self.root.title("Jira Data Extractor")
-        self.projects = projects  # Store the projects
+        self.projects = projects  
         self.create_widgets()
         self.root.mainloop()
 
@@ -160,13 +160,13 @@ class MainWindow:
         project_names = [project['name'] for project in self.projects]
         self.combobox2 = ttk.Combobox(combobox_frame, values=project_names, state='readonly')
         self.combobox2.pack(side=tk.LEFT, padx=5, pady=5)
-        self.combobox2.bind("<<ComboboxSelected>>", self.update_user_combobox)  # Ajouter la liaison de l'événement de sélection
+        self.combobox2.bind("<<ComboboxSelected>>", self.update_user_combobox)  
 
         # Combobox pour le nom d'utilisateur
         combobox_label = ttk.Label(combobox_frame, text="User's full name:")
         combobox_label.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.combobox = ttk.Combobox(combobox_frame, state='readonly')  # Ne pas définir les valeurs ici
+        self.combobox = ttk.Combobox(combobox_frame, state='readonly')  
         self.combobox.pack(side=tk.LEFT, padx=5, pady=5)
 
         # Cadre pour les dates
@@ -211,8 +211,6 @@ class MainWindow:
         selected_user = self.combobox.get()
         start_date = self.date_start.get()
         end_date = self.date_end.get()
-
-        # Vous pouvez utiliser les valeurs sélectionnées pour effectuer d'autres actions, par exemple, interroger Jira
 
         messagebox.showinfo("Submit", "Evolution submitted")
 
