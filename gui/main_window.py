@@ -4,6 +4,7 @@ from tkinter import messagebox
 from tkcalendar import DateEntry
 import pandas as pd
 import os
+from jira.api import fetch_people_on_project 
 
 class MainWindow:
     def __init__(self, projects):
@@ -157,16 +158,16 @@ class MainWindow:
         combobox_label2.pack(side=tk.LEFT, padx=5, pady=5)
 
         project_names = [project['name'] for project in self.projects]
-        combobox2 = ttk.Combobox(combobox_frame, values=project_names, state='readonly')
-        combobox2.pack(side=tk.LEFT, padx=5, pady=5)
+        self.combobox2 = ttk.Combobox(combobox_frame, values=project_names, state='readonly')
+        self.combobox2.pack(side=tk.LEFT, padx=5, pady=5)
+        self.combobox2.bind("<<ComboboxSelected>>", self.update_user_combobox)  # Ajouter la liaison de l'événement de sélection
 
         # Combobox pour le nom d'utilisateur
         combobox_label = ttk.Label(combobox_frame, text="User's full name:")
         combobox_label.pack(side=tk.LEFT, padx=5, pady=5)
 
-        options = ['User X', 'User Y', 'User Z']
-        combobox = ttk.Combobox(combobox_frame, values=options, state='readonly')
-        combobox.pack(side=tk.LEFT, padx=5, pady=5)
+        self.combobox = ttk.Combobox(combobox_frame, state='readonly')  # Ne pas définir les valeurs ici
+        self.combobox.pack(side=tk.LEFT, padx=5, pady=5)
 
         # Cadre pour les dates
         date_frame = ttk.Frame(input_window1)
@@ -175,37 +176,51 @@ class MainWindow:
         date_label_start = ttk.Label(date_frame, text="Start Date:")
         date_label_start.pack(side=tk.LEFT, padx=5, pady=5)
 
-        date_start = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
-        date_start.pack(side=tk.LEFT, padx=5, pady=5)
+        self.date_start = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
+        self.date_start.pack(side=tk.LEFT, padx=5, pady=5)
 
         date_label_end = ttk.Label(date_frame, text="End Date:")
         date_label_end.pack(side=tk.LEFT, padx=5, pady=5)
 
-        date_end = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
-        date_end.pack(side=tk.LEFT, padx=5, pady=5)
+        self.date_end = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
+        self.date_end.pack(side=tk.LEFT, padx=5, pady=5)
 
         submit_button_evolution = ttk.Button(input_window1, text="Submit", command=self.submit_evolution)
         submit_button_evolution.pack(anchor=tk.W, padx=5, pady=5)
 
-    def search_evolution(self):
-        # Logique pour l'onglet "L'évolution"
-        jql = self.filter_entry1.get()
-        data = self.fetch_jira_data(jql)
-        self.display_results(data, self.result_text1)
+    def update_user_combobox(self, event):
+        project_name = self.combobox2.get()
+        selected_project = next((project for project in self.projects if project['name'] == project_name), None)
 
-    def search_correction(self):
-        # Logique pour l'onglet "La correction"
-        jql = self.filter_entry2.get()
-        data = self.fetch_jira_data(jql)
-        self.display_results(data, self.result_text2)
+        if selected_project:
+            project_key = selected_project['key']
+            people = fetch_people_on_project(project_key)
+
+            if people:
+                # Mettre à jour les options de la combobox des utilisateurs
+                user_names = [person['displayName'] for person in people]
+                self.combobox['values'] = user_names
+                self.combobox.set('')  # Effacer la sélection précédente
+            else:
+                messagebox.showerror("Erreur", "Impossible de récupérer les personnes sur ce projet")
+        else:
+            messagebox.showerror("Erreur", "Projet non trouvé")
+
+    def submit_evolution(self):
+        # Logique pour le bouton "Submit" de l'onglet "L'evolution"
+        selected_user = self.combobox.get()
+        start_date = self.date_start.get()
+        end_date = self.date_end.get()
+
+        # Vous pouvez utiliser les valeurs sélectionnées pour effectuer d'autres actions, par exemple, interroger Jira
+
+        messagebox.showinfo("Submit", "Evolution submitted")
+
 
     def submit_correction(self):
         # Logique pour le bouton "Submit" de l'onglet "La correction"
         messagebox.showinfo("Submit", "Correction submitted")
 
-    def submit_evolution(self):
-        # Logique pour le bouton "Submit" de l'onglet "L'evolution"
-        messagebox.showinfo("Submit", "Evolution submitted")
 
     def export_results(self):
         # Logique pour exporter les résultats
