@@ -22,3 +22,15 @@ def fetch_people_on_project(project_key):
     else:
         print(f"Failed to fetch people on project {project_key}: {response.status_code} - {response.text}")
         return None
+    
+def fetch_issues(project_key, start_date, end_date):
+    jql = f'project = {project_key} AND created >= "{start_date}" AND created <= "{end_date}"'
+    url = f"{JIRA_URL}/search?jql={jql}"
+    response = requests.get(url, auth=AUTH)
+
+    if response.status_code == 200:
+        issues = response.json().get('issues', [])
+        return issues
+    else:
+        print(f"Failed to fetch issues: {response.status_code} - {response.text}")
+        return None

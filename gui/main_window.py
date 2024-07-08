@@ -4,7 +4,7 @@ from tkinter import messagebox
 from tkcalendar import DateEntry
 import pandas as pd
 import os
-from jira.api import fetch_people_on_project 
+from jira.api import fetch_people_on_project, fetch_issues 
 
 class MainWindow:
     def __init__(self, projects):
@@ -105,43 +105,51 @@ class MainWindow:
         self.filter_label2 = ttk.Label(self.left_frame_correction, text="Jira errors:")
         self.filter_label2.pack(anchor=tk.W, padx=5, pady=5)
 
-        self.result_text2 = tk.Text(self.left_frame_correction, height=20, width=80)
-        self.result_text2.pack(anchor=tk.W, padx=5, pady=5, expand=True, fill=tk.BOTH)
+         # Création du Treeview pour afficher les issues
+        self.issue_tree = ttk.Treeview(self.left_frame_correction, columns=("ID", "Summary", "Status", "Assignee"), show='headings')
+        self.issue_tree.heading("ID", text="ID")
+        self.issue_tree.heading("Summary", text="Summary")
+        self.issue_tree.heading("Status", text="Status")
+        self.issue_tree.heading("Assignee", text="Assignee")
+
+        self.issue_tree.column("ID", width=100)
+        self.issue_tree.column("Summary", width=300)
+        self.issue_tree.column("Status", width=100)
+        self.issue_tree.column("Assignee", width=100)
+
+        self.issue_tree.pack(expand=True, fill='both', padx=5, pady=5)
 
     def open_input_window_correction(self):
-        # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
+
         input_window = tk.Toplevel(self.root)
         input_window.title("Entrer les informations")
 
-        # Cadre pour les combobox
         combobox_frame = ttk.Frame(input_window)
         combobox_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
 
-        # Combobox pour les projets
         combobox_label2 = ttk.Label(combobox_frame, text="Projets:")
         combobox_label2.pack(side=tk.LEFT, padx=5, pady=5)
 
         project_names = [project['name'] for project in self.projects]
-        combobox2 = ttk.Combobox(combobox_frame, values=project_names, state='readonly')
-        combobox2.pack(side=tk.LEFT, padx=5, pady=5)
+        self.combobox2 = ttk.Combobox(combobox_frame, values=project_names, state='readonly')
+        self.combobox2.pack(side=tk.LEFT, padx=5, pady=5)
 
-        # Cadre pour les dates
         date_frame = ttk.Frame(input_window)
         date_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
 
         date_label_start = ttk.Label(date_frame, text="Start Date:")
         date_label_start.pack(side=tk.LEFT, padx=5, pady=5)
 
-        date_start = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
-        date_start.pack(side=tk.LEFT, padx=5, pady=5)
+        self.date_start = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
+        self.date_start.pack(side=tk.LEFT, padx=5, pady=5)
 
         date_label_end = ttk.Label(date_frame, text="End Date:")
         date_label_end.pack(side=tk.LEFT, padx=5, pady=5)
 
-        date_end = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
-        date_end.pack(side=tk.LEFT, padx=5, pady=5)
+        self.date_end = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
+        self.date_end.pack(side=tk.LEFT, padx=5, pady=5)
 
-        submit_button_correction = ttk.Button(input_window, text="Submit", command=self.submit_correction)
+        submit_button_correction = ttk.Button(input_window, text="Submit", command=lambda: self.submit_correction(input_window))
         submit_button_correction.pack(anchor=tk.W, padx=5, pady=5)
 
     def open_input_window_evolution(self):
@@ -200,7 +208,7 @@ class MainWindow:
                 # Mettre à jour les options de la combobox des utilisateurs
                 user_names = [person['displayName'] for person in people]
                 self.combobox['values'] = user_names
-                self.combobox.set('')  # Effacer la sélection précédente
+                self.combobox.set('')  
             else:
                 messagebox.showerror("Erreur", "Impossible de récupérer les personnes sur ce projet")
         else:
@@ -215,10 +223,32 @@ class MainWindow:
         messagebox.showinfo("Submit", "Evolution submitted")
 
 
-    def submit_correction(self):
-        # Logique pour le bouton "Submit" de l'onglet "La correction"
-        messagebox.showinfo("Submit", "Correction submitted")
+    def submit_correction(self, input_window):
+        project_name = self.combobox2.get()
+        start_date = self.date_start.get_date().strftime('%Y-%m-%d')
+        end_date = self.date_end.get_date().strftime('%Y-%m-%d')
 
+        selected_project = next((project for project in self.projects if project['name'] == project_name), None)
+
+        if selected_project:
+            project_key = selected_project['key']
+            issues = fetch_issues(project_key, start_date, end_date)
+            for i in self.issue_tree.get_children():
+                    self.issue_tree.delete(i)
+            if issues:
+                for issue in issues:
+                    issue_id = issue['key']
+                    issue_summary = issue['fields']['summary']
+                    issue_status = issue['fields']['status']['name']
+                    issue_assignee = issue['fields']['assignee']['displayName'] if issue['fields']['assignee'] else "Unassigned"
+
+                    self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee))
+
+                input_window.destroy()  # Fermer la fenêtre d'entrée des informations après soumission
+            else:
+                messagebox.showerror("Erreur", "Aucune issue trouvée pour ce projet et cette période")
+        else:
+            messagebox.showerror("Erreur", "Projet non trouvé")
 
     def export_results(self):
         # Logique pour exporter les résultats
