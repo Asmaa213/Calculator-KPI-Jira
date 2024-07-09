@@ -25,7 +25,8 @@ def fetch_people_on_project(project_key):
     
 def fetch_issues(project_key, start_date, end_date):
     jql = f'project = {project_key} AND created >= "{start_date}" AND created <= "{end_date}"'
-    url = f"{JIRA_URL}/search?jql={jql}"
+    fields = 'key,summary,status,assignee,worklog,timetracking'
+    url = f"{JIRA_URL}/search?jql={jql}&fields={fields}"
     response = requests.get(url, auth=AUTH)
 
     if response.status_code == 200:

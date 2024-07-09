@@ -105,49 +105,62 @@ class MainWindow:
         self.filter_label2 = ttk.Label(self.left_frame_correction, text="Jira errors:")
         self.filter_label2.pack(anchor=tk.W, padx=5, pady=5)
 
-         # Création du Treeview pour afficher les issues
-        self.issue_tree = ttk.Treeview(self.left_frame_correction, columns=("ID", "Summary", "Status", "Assignee"), show='headings')
+        # Création du Treeview pour afficher les issues
+        self.issue_tree = ttk.Treeview(self.left_frame_correction, columns=("ID", "Summary", "Status", "Assignee", "Worklog", "Estimation", "ETC","Cause"), show='headings')
         self.issue_tree.heading("ID", text="ID")
         self.issue_tree.heading("Summary", text="Summary")
         self.issue_tree.heading("Status", text="Status")
         self.issue_tree.heading("Assignee", text="Assignee")
+        self.issue_tree.heading("Worklog", text="Worklog")
+        self.issue_tree.heading("Estimation", text="Estimation")
+        self.issue_tree.heading("ETC", text="ETC")
+        self.issue_tree.heading("Cause", text="Cause")
 
         self.issue_tree.column("ID", width=100)
         self.issue_tree.column("Summary", width=300)
         self.issue_tree.column("Status", width=100)
         self.issue_tree.column("Assignee", width=100)
+        self.issue_tree.column("Worklog", width=100)
+        self.issue_tree.column("Estimation", width=100)
+        self.issue_tree.column("ETC", width=100)
+        self.issue_tree.column("Cause", width=200)
 
         self.issue_tree.pack(expand=True, fill='both', padx=5, pady=5)
 
-    def open_input_window_correction(self):
 
+    def open_input_window_correction(self):
+        # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
         input_window = tk.Toplevel(self.root)
         input_window.title("Entrer les informations")
 
+        # Cadre pour les combobox
         combobox_frame = ttk.Frame(input_window)
         combobox_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
 
+        # Combobox pour les projets
         combobox_label2 = ttk.Label(combobox_frame, text="Projets:")
         combobox_label2.pack(side=tk.LEFT, padx=5, pady=5)
 
         project_names = [project['name'] for project in self.projects]
-        self.combobox2 = ttk.Combobox(combobox_frame, values=project_names, state='readonly')
-        self.combobox2.pack(side=tk.LEFT, padx=5, pady=5)
+        self.combobox_project_var = tk.StringVar()
+        combobox2 = ttk.Combobox(combobox_frame, textvariable=self.combobox_project_var, values=project_names, state='readonly')
+        combobox2.pack(side=tk.LEFT, padx=5, pady=5)
 
+        # Cadre pour les dates
         date_frame = ttk.Frame(input_window)
         date_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
 
         date_label_start = ttk.Label(date_frame, text="Start Date:")
         date_label_start.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.date_start = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
-        self.date_start.pack(side=tk.LEFT, padx=5, pady=5)
+        self.start_date_entry = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
+        self.start_date_entry.pack(side=tk.LEFT, padx=5, pady=5)
 
         date_label_end = ttk.Label(date_frame, text="End Date:")
         date_label_end.pack(side=tk.LEFT, padx=5, pady=5)
 
-        self.date_end = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
-        self.date_end.pack(side=tk.LEFT, padx=5, pady=5)
+        self.end_date_entry = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
+        self.end_date_entry.pack(side=tk.LEFT, padx=5, pady=5)
 
         submit_button_correction = ttk.Button(input_window, text="Submit", command=lambda: self.submit_correction(input_window))
         submit_button_correction.pack(anchor=tk.W, padx=5, pady=5)
@@ -224,31 +237,70 @@ class MainWindow:
 
 
     def submit_correction(self, input_window):
-        project_name = self.combobox2.get()
-        start_date = self.date_start.get_date().strftime('%Y-%m-%d')
-        end_date = self.date_end.get_date().strftime('%Y-%m-%d')
+        selected_project = self.combobox_project_var.get()
+        start_date = self.start_date_entry.get_date()
+        end_date = self.end_date_entry.get_date()
 
-        selected_project = next((project for project in self.projects if project['name'] == project_name), None)
+        # Vider le tableau existant
+        for i in self.issue_tree.get_children():
+            self.issue_tree.delete(i)
 
-        if selected_project:
-            project_key = selected_project['key']
-            issues = fetch_issues(project_key, start_date, end_date)
-            for i in self.issue_tree.get_children():
-                    self.issue_tree.delete(i)
-            if issues:
-                for issue in issues:
-                    issue_id = issue['key']
-                    issue_summary = issue['fields']['summary']
-                    issue_status = issue['fields']['status']['name']
-                    issue_assignee = issue['fields']['assignee']['displayName'] if issue['fields']['assignee'] else "Unassigned"
+        issues = fetch_issues(selected_project, start_date, end_date)
+        if not issues:
+            messagebox.showerror("Error", "No issues found for the selected project and date range.")
+            return
 
-                    self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee))
+        # Filtrer et remplir le tableau avec les nouvelles issues
+        for issue in issues:
+            issue_id = issue['key']
+            issue_summary = issue['fields']['summary']
+            issue_status = issue['fields']['status']['name']
+            issue_assignee = issue['fields']['assignee']['displayName'] if issue['fields']['assignee'] else 'Unassigned'
 
-                input_window.destroy()  # Fermer la fenêtre d'entrée des informations après soumission
+            causes = []
+
+            # Condition 1: Issues sans estimations
+            if 'timetracking' in issue['fields'] and 'originalEstimateSeconds' not in issue['fields']['timetracking']:
+                causes.append("Issue sans estimation")
+
+            # Condition 2: Issues avec un worklog différent de 0 et status open
+            if issue['fields']['status']['name'] == 'Open' and 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
+                total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs'])
+                if total_time_spent > 0:
+                    causes.append("Issue avec worklog et status Open")
+
+            # Si aucune des conditions n'est satisfaite, passer à l'issue suivante
+            if not causes:
+                continue
+
+            # Estimation d'origine
+            if 'timetracking' in issue['fields'] and 'originalEstimateSeconds' in issue['fields']['timetracking']:
+                issue_estimation = issue['fields']['timetracking']['originalEstimateSeconds'] / 3600  # Convertir en heures
             else:
-                messagebox.showerror("Erreur", "Aucune issue trouvée pour ce projet et cette période")
-        else:
-            messagebox.showerror("Erreur", "Projet non trouvé")
+                issue_estimation = 0
+
+            # ETC (estimate to complete)
+            if 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
+                issue_etc = issue['fields']['timetracking']['remainingEstimateSeconds'] / 3600  # Convertir en heures
+            else:
+                issue_etc = 0
+
+            # Worklog (temps passé)
+            if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
+                total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) / 3600  # Convertir en heures
+            else:
+                total_time_spent = 0
+
+            # Insérer l'issue avec ses détails et les causes spécifiques
+            for cause in causes:
+                self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee, total_time_spent, issue_etc, issue_etc, cause))
+
+        input_window.destroy()
+
+
+
+
+
 
     def export_results(self):
         # Logique pour exporter les résultats
