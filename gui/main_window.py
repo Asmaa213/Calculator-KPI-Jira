@@ -269,19 +269,23 @@ class MainWindow:
                 if total_time_spent > 0:
                     causes.append("Issue avec worklog et status Open")
 
+            # Condition 3: Issues sans worklog et status différent de open
+            if issue['fields']['status']['name'] != 'Open' and ('worklog' not in issue['fields'] or 'worklogs' not in issue['fields']['worklog'] or sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) == 0):
+                causes.append("Issue sans worklog et status différent de Open")
+
             # Si aucune des conditions n'est satisfaite, passer à l'issue suivante
             if not causes:
                 continue
 
             # Estimation d'origine
             if 'timetracking' in issue['fields'] and 'originalEstimateSeconds' in issue['fields']['timetracking']:
-                issue_estimation = issue['fields']['timetracking']['originalEstimateSeconds'] / 3600  # Convertir en heures
+                issue_estimation = issue['fields']['timetracking']['originalEstimateSeconds'] / 3600  
             else:
                 issue_estimation = 0
 
             # ETC (estimate to complete)
             if 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
-                issue_etc = issue['fields']['timetracking']['remainingEstimateSeconds'] / 3600  # Convertir en heures
+                issue_etc = issue['fields']['timetracking']['remainingEstimateSeconds'] / 3600  
             else:
                 issue_etc = 0
 
@@ -293,7 +297,7 @@ class MainWindow:
 
             # Insérer l'issue avec ses détails et les causes spécifiques
             for cause in causes:
-                self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee, total_time_spent, issue_etc, issue_etc, cause))
+                self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee, total_time_spent, issue_estimation, issue_etc, cause))
 
         input_window.destroy()
 
