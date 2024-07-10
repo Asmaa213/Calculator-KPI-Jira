@@ -117,13 +117,13 @@ class MainWindow:
         self.issue_tree.heading("Cause", text="Cause")
 
         self.issue_tree.column("ID", width=100)
-        self.issue_tree.column("Summary", width=300)
+        self.issue_tree.column("Summary", width=250)
         self.issue_tree.column("Status", width=100)
         self.issue_tree.column("Assignee", width=100)
         self.issue_tree.column("Worklog", width=100)
         self.issue_tree.column("Estimation", width=100)
         self.issue_tree.column("ETC", width=100)
-        self.issue_tree.column("Cause", width=200)
+        self.issue_tree.column("Cause", width=250)
 
         self.issue_tree.pack(expand=True, fill='both', padx=5, pady=5)
 
@@ -272,8 +272,24 @@ class MainWindow:
             # Condition 3: Issues sans worklog et status différent de open
             if issue['fields']['status']['name'] != 'Open' and ('worklog' not in issue['fields'] or 'worklogs' not in issue['fields']['worklog'] or sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) == 0):
                 causes.append("Issue sans worklog et status différent de Open")
+            
+            # Condition 4: Issues livrées (statut = Done) avec ETC différent de 0
+            if issue['fields']['status']['name'] == 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
+                if issue['fields']['timetracking']['remainingEstimateSeconds'] != 0:
+                    causes.append("Issue livré avec ETC différent de 0")
+            
+            # Condition 5: Issues dont le statut est différent de done et ETC = 0
+            if issue['fields']['status']['name'] != 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
+                if issue['fields']['timetracking']['remainingEstimateSeconds'] == 0:
+                    causes.append("Issue non livré avec ETC = 0")
+            
+            # Condition 6: Issues dont plusieurs personnes ont modifié dans le même worklog
+            if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
+                worklog_authors = {entry['author']['displayName'] for entry in issue['fields']['worklog']['worklogs']}
+                if len(worklog_authors) > 1:
+                    causes.append("Issue avec plusieurs modificateurs dans le même worklog")
 
-            # Si aucune des conditions n'est satisfaite, passer à l'issue suivante
+            
             if not causes:
                 continue
 
@@ -300,10 +316,6 @@ class MainWindow:
                 self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee, total_time_spent, issue_estimation, issue_etc, cause))
 
         input_window.destroy()
-
-
-
-
 
 
     def export_results(self):
