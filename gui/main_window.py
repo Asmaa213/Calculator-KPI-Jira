@@ -285,8 +285,8 @@ class MainWindow:
             
             # Condition 6: Issues dont plusieurs personnes ont modifié dans le même worklog
             worklog_authors = set()
-            """if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
-                worklog_authors.update(entry['author']['displayName'] for entry in issue['fields']['worklog']['worklogs'])"""
+            if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
+                worklog_authors.update(entry['author']['displayName'] for entry in issue['fields']['worklog']['worklogs'])
 
             changelog = fetch_changelog_for_issue(issue_id)
 
