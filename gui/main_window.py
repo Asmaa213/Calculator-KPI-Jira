@@ -4,7 +4,7 @@ from tkinter import messagebox
 from tkcalendar import DateEntry
 import pandas as pd
 import os
-from jira.api import fetch_people_on_project, fetch_issues 
+from jira.api import fetch_people_on_project, fetch_issues, fetch_changelog_for_issue 
 
 class MainWindow:
     def __init__(self, projects):
@@ -281,13 +281,26 @@ class MainWindow:
             # Condition 5: Issues dont le statut est différent de done et ETC = 0
             if issue['fields']['status']['name'] != 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
                 if issue['fields']['timetracking']['remainingEstimateSeconds'] == 0:
-                    causes.append("Issue non livré avec ETC = 0")
+                    causes.append("Issue non livrée avec ETC = 0")
             
             # Condition 6: Issues dont plusieurs personnes ont modifié dans le même worklog
-            if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
-                worklog_authors = {entry['author']['displayName'] for entry in issue['fields']['worklog']['worklogs']}
-                if len(worklog_authors) > 1:
-                    causes.append("Issue avec plusieurs modificateurs dans le même worklog")
+            worklog_authors = set()
+            """if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
+                worklog_authors.update(entry['author']['displayName'] for entry in issue['fields']['worklog']['worklogs'])"""
+
+            changelog = fetch_changelog_for_issue(issue_id)
+
+            if changelog:
+                print("Changelog trouvé!")
+                changelog_authors = {entry['author']['displayName'] for entry in changelog['histories']}
+                worklog_authors = changelog_authors
+            else:
+                print("Le changelog n'a pas été trouvé dans l'issue")
+
+            if len(worklog_authors) > 1:
+                causes.append("Issue avec modifications par plusieurs utilisateurs")
+            
+            print("Auteurs du worklog :", worklog_authors)
 
             
             if not causes:
@@ -307,7 +320,7 @@ class MainWindow:
 
             # Worklog (temps passé)
             if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
-                total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) / 3600  # Convertir en heures
+                total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) / 3600  
             else:
                 total_time_spent = 0
 
