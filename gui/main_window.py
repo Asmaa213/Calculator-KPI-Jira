@@ -246,6 +246,7 @@ class MainWindow:
             self.issue_tree.delete(i)
 
         issues = fetch_issues(selected_project, start_date, end_date)
+       
         if not issues:
             messagebox.showerror("Error", "No issues found for the selected project and date range.")
             return
@@ -264,22 +265,22 @@ class MainWindow:
                 causes.append("Issue sans estimation")
 
             # Condition 2: Issues avec un worklog différent de 0 et status open
-            if issue['fields']['status']['name'] == 'Open' and 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
+            if issue_status == 'Open' and 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
                 total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs'])
                 if total_time_spent > 0:
                     causes.append("Issue avec worklog et status Open")
 
             # Condition 3: Issues sans worklog et status différent de open
-            if issue['fields']['status']['name'] != 'Open' and ('worklog' not in issue['fields'] or 'worklogs' not in issue['fields']['worklog'] or sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) == 0):
+            if issue_status != 'Open' and ('worklog' not in issue['fields'] or 'worklogs' not in issue['fields']['worklog'] or sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) == 0):
                 causes.append("Issue sans worklog et status différent de Open")
             
             # Condition 4: Issues livrées (statut = Done) avec ETC différent de 0
-            if issue['fields']['status']['name'] == 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
+            if issue_status == 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
                 if issue['fields']['timetracking']['remainingEstimateSeconds'] != 0:
                     causes.append("Issue livré avec ETC différent de 0")
             
             # Condition 5: Issues dont le statut est différent de done et ETC = 0
-            if issue['fields']['status']['name'] != 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
+            if issue_status != 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
                 if issue['fields']['timetracking']['remainingEstimateSeconds'] == 0:
                     causes.append("Issue non livrée avec ETC = 0")
             
@@ -302,7 +303,6 @@ class MainWindow:
             
             print("Auteurs du worklog :", worklog_authors)
 
-            
             if not causes:
                 continue
 
@@ -329,6 +329,8 @@ class MainWindow:
                 self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee, total_time_spent, issue_estimation, issue_etc, cause))
 
         input_window.destroy()
+
+        
 
 
     def export_results(self):

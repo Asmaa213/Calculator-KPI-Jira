@@ -24,7 +24,9 @@ def fetch_people_on_project(project_key):
         return None
     
 def fetch_issues(project_key, start_date, end_date):
-    jql = f'project = {project_key} AND created >= "{start_date}" AND created <= "{end_date}"'
+   
+    subtask_type = "Sub-task"
+    jql = f'project = {project_key} AND created >= "{start_date}" AND created <= "{end_date}" AND issuetype = "{subtask_type}"'
     fields = 'key,summary,status,assignee,worklog,timetracking,changelog'
     url = f"{JIRA_URL}/search?jql={jql}&fields={fields}"
     response = requests.get(url, auth=AUTH)
