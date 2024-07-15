@@ -335,14 +335,21 @@ class MainWindow:
 
     def export_results(self):
         # Logique pour exporter les résultats
-        data = [
-            {'summary': 'Issue 1', 'status': 'Open', 'assignee': 'User A'},
-            {'summary': 'Issue 2', 'status': 'In Progress', 'assignee': 'User B'}
-        ]
-        df = pd.DataFrame(data)
         file_path = os.path.join(os.path.expanduser("~"), "jira_results.xlsx")
-        df.to_excel(file_path, index=False)
-        messagebox.showinfo("Export", f"Résultats exportés avec succès vers {file_path}")
+        data = []
+        for i in self.issue_tree.get_children():
+            item_values = self.issue_tree.item(i, 'values')
+            data.append(item_values)
+
+        df = pd.DataFrame(data,
+                        columns=["ID", "Summary", "Status", "Assignee", "Worklog", "Estimation", "ETC", "Cause"])
+
+        try:
+            with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False)
+            print("Data exported successfully.")
+        except Exception as e:
+            print(f"Failed to export data: {e}")
 
     def run(self):
         self.root.mainloop()
