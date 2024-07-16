@@ -9,7 +9,7 @@ from jira.api import fetch_people_on_project, fetch_issues, fetch_changelog_for_
 class MainWindow:
     def __init__(self, projects):
         self.root = tk.Tk()
-        self.root.title("Jira Data Extractor")
+        self.root.title("Calculator KPI Jira")
         self.projects = projects  
         self.create_widgets()
         self.root.mainloop()
@@ -41,10 +41,10 @@ class MainWindow:
         self.button_frame_evolution = ttk.Frame(self.tab_evolution)
         self.button_frame_evolution.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-        self.input_button_evolution = ttk.Button(self.button_frame_evolution, text="Actualiser information", command=self.open_input_window_evolution)
+        self.input_button_evolution = ttk.Button(self.button_frame_evolution, text="Refresh Information", command=self.open_input_window_evolution)
         self.input_button_evolution.pack(side=tk.LEFT, padx=5)
 
-        self.export_button_evolution = ttk.Button(self.button_frame_evolution, text="Exporter à Excel", command=self.export_results)
+        self.export_button_evolution = ttk.Button(self.button_frame_evolution, text="Export to Excel", command=self.export_results)
         self.export_button_evolution.pack(side=tk.LEFT, padx=5)
 
         # Cadre principal de l'onglet évolution
@@ -66,17 +66,17 @@ class MainWindow:
         self.right_frame_evolution.pack(side=tk.RIGHT, fill='y', padx=5, pady=5)
 
         # Ajouter les champs d'efficience
-        ttk.Label(self.right_frame_evolution, text="EFFICIENCE").pack(anchor=tk.W, padx=5, pady=5)
+        ttk.Label(self.right_frame_evolution, text="EFFICIENCY").pack(anchor=tk.W, padx=5, pady=5)
 
         labels = [
-            "Estimation accumulée (H)",
-            "Incurré accumulé (H)\n(Incluant les tâches sans estimation)",
-            "Incurré accumulé (H)\n(Excluant les tâches sans estimation)",
-            "Efficacité accumulée (H)",
-            "Efficacité accumulée (%)",
-            "Nombre de tâches efficaces",
-            "Nombre de tâches inefficaces",
-            "Nombre de tâches non estimées"
+            "Cumulative Estimate (H)",
+            "Cumulative Incurred (H) (Including Tasks Without Estimate)",
+            "Cumulative Incurred (H) (Excluding Tasks Without Estimate)",
+            "Cumulative Efficiency (H)",
+            "Cumulative Efficiency (%)",
+            "Number of Efficient Tasks",
+            "Number of Inefficient Tasks",
+            "Number of Unestimated Tasks"
         ]
 
         for label in labels:
@@ -88,10 +88,10 @@ class MainWindow:
         self.button_frame_correction = ttk.Frame(self.tab_correction)
         self.button_frame_correction.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-        self.input_button_correction = ttk.Button(self.button_frame_correction, text="Actualiser information", command=self.open_input_window_correction)
+        self.input_button_correction = ttk.Button(self.button_frame_correction, text="Refresh Information", command=self.open_input_window_correction)
         self.input_button_correction.pack(side=tk.LEFT, padx=5)
 
-        self.export_button_correction = ttk.Button(self.button_frame_correction, text="Exporter à Excel", command=self.export_results)
+        self.export_button_correction = ttk.Button(self.button_frame_correction, text="Export to Excel", command=self.export_results)
         self.export_button_correction.pack(side=tk.LEFT, padx=5)
 
         # Cadre principal de l'onglet correction
@@ -110,9 +110,9 @@ class MainWindow:
         self.issue_tree.heading("ID", text="ID")
         self.issue_tree.heading("Summary", text="Summary")
         self.issue_tree.heading("Status", text="Status")
-        self.issue_tree.heading("Assignee", text="Assignee")
+        self.issue_tree.heading("Assignee", text="Assigned to")
         self.issue_tree.heading("Worklog", text="Worklog")
-        self.issue_tree.heading("Estimation", text="Estimation")
+        self.issue_tree.heading("Estimation", text="Estimate")
         self.issue_tree.heading("ETC", text="ETC")
         self.issue_tree.heading("Cause", text="Cause")
 
@@ -123,7 +123,7 @@ class MainWindow:
         self.issue_tree.column("Worklog", width=100)
         self.issue_tree.column("Estimation", width=100)
         self.issue_tree.column("ETC", width=100)
-        self.issue_tree.column("Cause", width=250)
+        self.issue_tree.column("Cause", width=300)
 
         self.issue_tree.pack(expand=True, fill='both', padx=5, pady=5)
 
@@ -131,14 +131,14 @@ class MainWindow:
     def open_input_window_correction(self):
         # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
         input_window = tk.Toplevel(self.root)
-        input_window.title("Entrer les informations")
+        input_window.title("Refresh Information")
 
         # Cadre pour les combobox
         combobox_frame = ttk.Frame(input_window)
         combobox_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
 
         # Combobox pour les projets
-        combobox_label2 = ttk.Label(combobox_frame, text="Projets:")
+        combobox_label2 = ttk.Label(combobox_frame, text="Projects:")
         combobox_label2.pack(side=tk.LEFT, padx=5, pady=5)
 
         project_names = [project['name'] for project in self.projects]
@@ -168,14 +168,14 @@ class MainWindow:
     def open_input_window_evolution(self):
         # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
         input_window1 = tk.Toplevel(self.root)
-        input_window1.title("Entrer les informations")
+        input_window1.title("Refresh Information")
 
         # Cadre pour les combobox
         combobox_frame = ttk.Frame(input_window1)
         combobox_frame.pack(anchor=tk.W, padx=5, pady=5, fill=tk.X)
 
         # Combobox pour les projets
-        combobox_label2 = ttk.Label(combobox_frame, text="Projets:")
+        combobox_label2 = ttk.Label(combobox_frame, text="Projects:")
         combobox_label2.pack(side=tk.LEFT, padx=5, pady=5)
 
         project_names = [project['name'] for project in self.projects]
@@ -184,7 +184,7 @@ class MainWindow:
         self.combobox2.bind("<<ComboboxSelected>>", self.update_user_combobox)  
 
         # Combobox pour le nom d'utilisateur
-        combobox_label = ttk.Label(combobox_frame, text="User's full name:")
+        combobox_label = ttk.Label(combobox_frame, text="Users full name:")
         combobox_label.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.combobox = ttk.Combobox(combobox_frame, state='readonly')  
@@ -218,14 +218,13 @@ class MainWindow:
             people = fetch_people_on_project(project_key)
 
             if people:
-                # Mettre à jour les options de la combobox des utilisateurs
                 user_names = [person['displayName'] for person in people]
                 self.combobox['values'] = user_names
                 self.combobox.set('')  
             else:
-                messagebox.showerror("Erreur", "Impossible de récupérer les personnes sur ce projet")
+                messagebox.showerror("Error", "Unable to retrieve people for this project")
         else:
-            messagebox.showerror("Erreur", "Projet non trouvé")
+            messagebox.showerror("Error", "Project not found")
 
     def submit_evolution(self):
         # Logique pour le bouton "Submit" de l'onglet "L'evolution"
@@ -246,7 +245,7 @@ class MainWindow:
             self.issue_tree.delete(i)
 
         issues = fetch_issues(selected_project, start_date, end_date)
-       
+        
         if not issues:
             messagebox.showerror("Error", "No issues found for the selected project and date range.")
             return
@@ -260,29 +259,29 @@ class MainWindow:
 
             causes = []
 
-            # Condition 1: Issues sans estimations
-            if 'timetracking' in issue['fields'] and 'originalEstimateSeconds' not in issue['fields']['timetracking']:
-                causes.append("Issue sans estimation")
+            # Condition 1: Issues sans estimation
+            if 'timetracking' in issue['fields'] and 'originalEstimateSeconds' not in issue['fields']['timetracking'] :
+                causes.append("Issue without estimate")
 
             # Condition 2: Issues avec un worklog différent de 0 et status open
             if issue_status == 'Open' and 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
                 total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs'])
                 if total_time_spent > 0:
-                    causes.append("Issue avec worklog et status Open")
+                    causes.append("Issue with worklog and status Open")
 
             # Condition 3: Issues sans worklog et status différent de open
             if issue_status != 'Open' and ('worklog' not in issue['fields'] or 'worklogs' not in issue['fields']['worklog'] or sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) == 0):
-                causes.append("Issue sans worklog et status différent de Open")
+                causes.append("Issue without worklog and status different from Open")
             
             # Condition 4: Issues livrées (statut = Done) avec ETC différent de 0
             if issue_status == 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
                 if issue['fields']['timetracking']['remainingEstimateSeconds'] != 0:
-                    causes.append("Issue livré avec ETC différent de 0")
+                    causes.append("Delivered issue with ETC different from 0")
             
             # Condition 5: Issues dont le statut est différent de done et ETC = 0
             if issue_status != 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
                 if issue['fields']['timetracking']['remainingEstimateSeconds'] == 0:
-                    causes.append("Issue non livrée avec ETC = 0")
+                    causes.append("Undelivered issue with ETC = 0")
             
             # Condition 6: Issues dont plusieurs personnes ont modifié dans le même worklog
             worklog_authors = set()
@@ -294,12 +293,12 @@ class MainWindow:
             if changelog:
                 print("Changelog trouvé!")
                 changelog_authors = {entry['author']['displayName'] for entry in changelog['histories']}
-                worklog_authors = changelog_authors
+                worklog_authors.update(changelog_authors)
             else:
                 print("Le changelog n'a pas été trouvé dans l'issue")
 
             if len(worklog_authors) > 1:
-                causes.append("Issue avec modifications par plusieurs utilisateurs")
+                causes.append("Issue with modifications by multiple users")
             
             print("Auteurs du worklog :", worklog_authors)
 
@@ -329,9 +328,6 @@ class MainWindow:
                 self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee, total_time_spent, issue_estimation, issue_etc, cause))
 
         input_window.destroy()
-
-        
-
 
     def export_results(self):
         # Logique pour exporter les résultats
