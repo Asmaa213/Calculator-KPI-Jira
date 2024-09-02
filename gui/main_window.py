@@ -4,7 +4,7 @@ from tkinter import messagebox
 from tkcalendar import DateEntry
 import pandas as pd
 import os
-from jira.api import fetch_people_on_project, fetch_issues, fetch_changelog_for_issue 
+from jira.api import fetch_people_on_project, fetch_issues, fetch_changelog_for_issue, fetch__issues_evolution 
 
 class MainWindow:
     def __init__(self, projects):
@@ -44,7 +44,7 @@ class MainWindow:
         self.input_button_evolution = ttk.Button(self.button_frame_evolution, text="Refresh Information", command=self.open_input_window_evolution)
         self.input_button_evolution.pack(side=tk.LEFT, padx=5)
 
-        self.export_button_evolution = ttk.Button(self.button_frame_evolution, text="Export to Excel", command=self.export_results)
+        self.export_button_evolution = ttk.Button(self.button_frame_evolution, text="Export to Excel", command=self.export_results_evolution)
         self.export_button_evolution.pack(side=tk.LEFT, padx=5)
 
         # Cadre principal de l'onglet évolution
@@ -58,8 +58,20 @@ class MainWindow:
         self.filter_label1 = ttk.Label(self.left_frame_evolution, text="Jira details:")
         self.filter_label1.pack(anchor=tk.W, padx=5, pady=5)
 
-        self.result_text1 = tk.Text(self.left_frame_evolution, height=20, width=80)
-        self.result_text1.pack(anchor=tk.W, padx=5, pady=5, expand=True, fill=tk.BOTH)
+        # Création du Treeview pour afficher les issues
+        self.issue_tree1 = ttk.Treeview(self.left_frame_evolution, columns=("ID", "Summary", "Status", "Assignee"),
+                                        show='headings')
+        self.issue_tree1.heading("ID", text="ID")
+        self.issue_tree1.heading("Summary", text="Summary")
+        self.issue_tree1.heading("Status", text="Status")
+        self.issue_tree1.heading("Assignee", text="Assignee")
+
+        self.issue_tree1.column("ID", width=100)
+        self.issue_tree1.column("Summary", width=250)
+        self.issue_tree1.column("Status", width=100)
+        self.issue_tree1.column("Assignee", width=100)
+
+        self.issue_tree1.pack(expand=True, anchor=tk.W, fill='both', padx=5, pady=5)
 
         # Cadre de droite pour les détails d'efficience
         self.right_frame_evolution = ttk.Frame(self.main_frame_evolution)
@@ -91,7 +103,7 @@ class MainWindow:
         self.input_button_correction = ttk.Button(self.button_frame_correction, text="Refresh Information", command=self.open_input_window_correction)
         self.input_button_correction.pack(side=tk.LEFT, padx=5)
 
-        self.export_button_correction = ttk.Button(self.button_frame_correction, text="Export to Excel", command=self.export_results)
+        self.export_button_correction = ttk.Button(self.button_frame_correction, text="Export to Excel", command=self.export_results_correction)
         self.export_button_correction.pack(side=tk.LEFT, padx=5)
 
         # Cadre principal de l'onglet correction
@@ -116,13 +128,13 @@ class MainWindow:
         self.issue_tree.heading("ETC", text="ETC")
         self.issue_tree.heading("Cause", text="Cause")
 
-        self.issue_tree.column("ID", width=100)
-        self.issue_tree.column("Summary", width=250)
-        self.issue_tree.column("Status", width=100)
+        self.issue_tree.column("ID", width=90)
+        self.issue_tree.column("Summary", width=300)
+        self.issue_tree.column("Status", width=90)
         self.issue_tree.column("Assignee", width=100)
-        self.issue_tree.column("Worklog", width=100)
-        self.issue_tree.column("Estimation", width=100)
-        self.issue_tree.column("ETC", width=100)
+        self.issue_tree.column("Worklog", width=90)
+        self.issue_tree.column("Estimation", width=90)
+        self.issue_tree.column("ETC", width=90)
         self.issue_tree.column("Cause", width=300)
 
         self.issue_tree.pack(expand=True, fill='both', padx=5, pady=5)
@@ -206,7 +218,7 @@ class MainWindow:
         self.date_end = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=2)
         self.date_end.pack(side=tk.LEFT, padx=5, pady=5)
 
-        submit_button_evolution = ttk.Button(input_window1, text="Submit", command=self.submit_evolution)
+        submit_button_evolution = ttk.Button(input_window1, text="Submit", command=lambda: self.submit_evolution(input_window1))
         submit_button_evolution.pack(anchor=tk.W, padx=5, pady=5)
 
     def update_user_combobox(self, event):
@@ -226,14 +238,33 @@ class MainWindow:
         else:
             messagebox.showerror("Error", "Project not found")
 
-    def submit_evolution(self):
-        # Logique pour le bouton "Submit" de l'onglet "L'evolution"
+    def submit_evolution(self, input_window1):
+        selected_project = self.combobox2.get()
         selected_user = self.combobox.get()
-        start_date = self.date_start.get()
-        end_date = self.date_end.get()
+        date_start = self.date_start.get_date()
+        date_end = self.date_end.get_date()
 
-        messagebox.showinfo("Submit", "Evolution submitted")
+        # Clear the Treeview before inserting new data
+        for item in self.issue_tree1.get_children():
+            self.issue_tree1.delete(item)
 
+        if selected_project and selected_user and date_start and date_end:
+            issues = fetch__issues_evolution(selected_project, date_start, date_end, selected_user)
+            
+            if issues:
+                for issue in issues:
+                    self.issue_tree1.insert('', 'end', values=(
+                        issue['key'], 
+                        issue['summary'], 
+                        issue['status'], 
+                        issue['assignee']
+                    ))
+            else:
+                tk.messagebox.showinfo("No Issues", "No issues found for the selected criteria.")
+
+            input_window1.destroy()
+        else:
+            tk.messagebox.showwarning("Input Error", "Please fill in all fields.")
 
     def submit_correction(self, input_window):
         selected_project = self.combobox_project_var.get()
@@ -274,12 +305,12 @@ class MainWindow:
                 causes.append("Issue without worklog and status different from Open")
             
             # Condition 4: Issues livrées (statut = Done) avec ETC différent de 0
-            if issue_status == 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
+            if (issue_status == 'Done' or issue_status == 'Delivered') and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
                 if issue['fields']['timetracking']['remainingEstimateSeconds'] != 0:
                     causes.append("Delivered issue with ETC different from 0")
             
             # Condition 5: Issues dont le statut est différent de done et ETC = 0
-            if issue_status != 'Done' and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
+            if (issue_status != 'Done' and issue_status != 'Delivered') and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
                 if issue['fields']['timetracking']['remainingEstimateSeconds'] == 0:
                     causes.append("Undelivered issue with ETC = 0")
             
@@ -307,19 +338,43 @@ class MainWindow:
 
             # Estimation d'origine
             if 'timetracking' in issue['fields'] and 'originalEstimateSeconds' in issue['fields']['timetracking']:
-                issue_estimation = issue['fields']['timetracking']['originalEstimateSeconds'] / 3600  
+                total_estimation = issue['fields']['timetracking']['originalEstimateSeconds'] 
+
+                days, remainder = divmod(total_estimation, 86400)  
+                hours, remainder = divmod(remainder, 3600)  
+                minutes, seconds = divmod(remainder, 60)  
+                if days == 0:
+                    issue_estimation = f"{hours} h {minutes} min"
+                else:
+                    issue_estimation = f"{days} d {hours} h {minutes} min" 
             else:
                 issue_estimation = 0
 
             # ETC (estimate to complete)
             if 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
-                issue_etc = issue['fields']['timetracking']['remainingEstimateSeconds'] / 3600  
+                total_seconds = issue['fields']['timetracking']['remainingEstimateSeconds']
+                
+                days, remainder = divmod(total_seconds, 86400)  
+                hours, remainder = divmod(remainder, 3600)  
+                minutes, seconds = divmod(remainder, 60)  
+                if days == 0:
+                    issue_etc = f"{hours} h {minutes} min"
+                else:
+                    issue_etc = f"{days} d {hours} h {minutes} min"
             else:
-                issue_etc = 0
+                issue_etc = 0 
 
             # Worklog (temps passé)
             if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
-                total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) / 3600  
+                total_time = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) 
+
+                days, remainder = divmod(total_time, 86400)  
+                hours, remainder = divmod(remainder, 3600)  
+                minutes, seconds = divmod(remainder, 60)  
+                if days == 0:
+                    total_time_spent = f"{hours} h {minutes} min"
+                else:
+                    total_time_spent = f"{days} d {hours} h {minutes} min" 
             else:
                 total_time_spent = 0
 
@@ -329,7 +384,7 @@ class MainWindow:
 
         input_window.destroy()
 
-    def export_results(self):
+    def export_results_correction(self):
         # Logique pour exporter les résultats
         file_path = os.path.join(os.path.expanduser("~"), "jira_results.xlsx")
         data = []
@@ -343,9 +398,28 @@ class MainWindow:
         try:
             with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False)
-            print("Data exported successfully.")
+            tk.messagebox.showinfo("Export Successful", f"Data exported successfully")
         except Exception as e:
-            print(f"Failed to export data: {e}")
+            tk.messagebox.showwarning("Export Cancelled", f"Failed to export data: {e}")
+
+    
+    def export_results_evolution(self):
+        # Logique pour exporter les résultats
+        file_path = os.path.join(os.path.expanduser("~"), "jira_results.xlsx")
+        data = []
+        for i in self.issue_tree1.get_children():
+            item_values = self.issue_tree1.item(i, 'values')
+            data.append(item_values)
+
+        df = pd.DataFrame(data,
+                        columns=["ID", "Summary", "Status", "Assignee"])
+
+        try:
+            with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False)
+            tk.messagebox.showinfo("Export Successful", f"Data exported successfully")
+        except Exception as e:
+            tk.messagebox.showwarning("Export Cancelled", f"Failed to export data: {e}")
 
     def run(self):
         self.root.mainloop()
