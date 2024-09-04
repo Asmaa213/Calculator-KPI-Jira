@@ -5,6 +5,9 @@ from tkcalendar import DateEntry
 import pandas as pd
 import os
 import webbrowser
+from datetime import datetime
+import platform
+import subprocess
 from jira.api import fetch_people_on_project, fetch_issues, fetch_changelog_for_issue, fetch__issues_evolution 
 
 class MainWindow:
@@ -382,12 +385,20 @@ class MainWindow:
             issue_id = self.issue_tree.item(selected_item, 'values')[0]
 
             jira_link = f"https://umane.emeal.nttdata.com/jiraito/browse/{issue_id}"
-            print(jira_link)
+
             webbrowser.open(jira_link)
 
     def export_results_correction(self):
-        # Logique pour exporter les résultats
-        file_path = os.path.join(os.path.expanduser("~"), "jira_results.xlsx")
+
+        downloads_folder = os.path.join(os.path.expanduser("~"), "Downloads")
+      
+        selected_project = self.combobox_project_var.get()
+
+        timestamp = datetime.now().strftime("%Y-%m-%d")
+        file_name = f"jira_results_{selected_project}_{timestamp}.xlsx"
+        file_path = os.path.join(downloads_folder, file_name)
+
+        
         data = []
         for i in self.issue_tree.get_children():
             item_values = self.issue_tree.item(i, 'values')
@@ -396,17 +407,34 @@ class MainWindow:
         df = pd.DataFrame(data,
                         columns=["ID", "Summary", "Status", "Assignee", "Worklog", "Estimation", "ETC", "Cause"])
 
+        
         try:
             with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False)
-            tk.messagebox.showinfo("Export Successful", f"Data exported successfully")
+            
+            tk.messagebox.showinfo("Export Successful", f"Data exported successfully to {file_name}")
+
+            # Open the file automatically after export
+            if platform.system() == 'Windows':
+                os.startfile(file_path)
+            elif platform.system() == 'Darwin':  # macOS
+                subprocess.call(('open', file_path))
+            else:  # Linux
+                subprocess.call(('xdg-open', file_path))
+
         except Exception as e:
             tk.messagebox.showwarning("Export Cancelled", f"Failed to export data: {e}")
 
     
     def export_results_evolution(self):
-        # Logique pour exporter les résultats
-        file_path = os.path.join(os.path.expanduser("~"), "jira_results.xlsx")
+        # Locate the Downloads folder
+        downloads_folder1 = os.path.join(os.path.expanduser("~"), "Downloads")
+
+        date_str1 = datetime.now().strftime("%Y-%m-%d")  # Format: YYYY-MM-DD
+        file_name1 = f"jira_results_evolution_{date_str1}.xlsx"
+        file_path1 = os.path.join(downloads_folder1, file_name1)
+
+        # Prepare data for export
         data = []
         for i in self.issue_tree1.get_children():
             item_values = self.issue_tree1.item(i, 'values')
@@ -415,10 +443,21 @@ class MainWindow:
         df = pd.DataFrame(data,
                         columns=["ID", "Summary", "Status", "Assignee"])
 
+        # Try exporting the data to the Excel file
         try:
-            with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
+            with pd.ExcelWriter(file_path1, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False)
-            tk.messagebox.showinfo("Export Successful", f"Data exported successfully")
+            
+            tk.messagebox.showinfo("Export Successful", f"Data exported successfully to {file_name1}")
+
+            # Open the file automatically after export
+            if platform.system() == 'Windows':
+                os.startfile(file_path1)
+            elif platform.system() == 'Darwin':  # macOS
+                subprocess.call(('open', file_path1))
+            else:  # Linux
+                subprocess.call(('xdg-open', file_path1))
+
         except Exception as e:
             tk.messagebox.showwarning("Export Cancelled", f"Failed to export data: {e}")
 
