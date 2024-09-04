@@ -4,6 +4,7 @@ from tkinter import messagebox
 from tkcalendar import DateEntry
 import pandas as pd
 import os
+import webbrowser
 from jira.api import fetch_people_on_project, fetch_issues, fetch_changelog_for_issue, fetch__issues_evolution 
 
 class MainWindow:
@@ -138,6 +139,7 @@ class MainWindow:
         self.issue_tree.column("Cause", width=300)
 
         self.issue_tree.pack(expand=True, fill='both', padx=5, pady=5)
+        self.issue_tree.bind("<Double-1>", self.open_jira_task)
 
 
     def open_input_window_correction(self):
@@ -340,27 +342,20 @@ class MainWindow:
             if 'timetracking' in issue['fields'] and 'originalEstimateSeconds' in issue['fields']['timetracking']:
                 total_estimation = issue['fields']['timetracking']['originalEstimateSeconds'] 
 
-                days, remainder = divmod(total_estimation, 86400)  
-                hours, remainder = divmod(remainder, 3600)  
+                hours, remainder = divmod(total_estimation, 3600)  
                 minutes, seconds = divmod(remainder, 60)  
-                if days == 0:
-                    issue_estimation = f"{hours} h {minutes} min"
-                else:
-                    issue_estimation = f"{days} d {hours} h {minutes} min" 
+                issue_estimation = f"{hours} h {minutes} min"
             else:
                 issue_estimation = 0
 
             # ETC (estimate to complete)
             if 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
                 total_seconds = issue['fields']['timetracking']['remainingEstimateSeconds']
-                
-                days, remainder = divmod(total_seconds, 86400)  
-                hours, remainder = divmod(remainder, 3600)  
+                 
+                hours, remainder = divmod(total_seconds, 3600)  
                 minutes, seconds = divmod(remainder, 60)  
-                if days == 0:
-                    issue_etc = f"{hours} h {minutes} min"
-                else:
-                    issue_etc = f"{days} d {hours} h {minutes} min"
+                issue_etc = f"{hours} h {minutes} min"
+                
             else:
                 issue_etc = 0 
 
@@ -368,13 +363,9 @@ class MainWindow:
             if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
                 total_time = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) 
 
-                days, remainder = divmod(total_time, 86400)  
-                hours, remainder = divmod(remainder, 3600)  
+                hours, remainder = divmod(total_time, 3600)  
                 minutes, seconds = divmod(remainder, 60)  
-                if days == 0:
-                    total_time_spent = f"{hours} h {minutes} min"
-                else:
-                    total_time_spent = f"{days} d {hours} h {minutes} min" 
+                total_time_spent = f"{hours} h {minutes} min"
             else:
                 total_time_spent = 0
 
@@ -383,6 +374,16 @@ class MainWindow:
                 self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee, total_time_spent, issue_estimation, issue_etc, cause))
 
         input_window.destroy()
+
+    def open_jira_task(self, event):
+        selected_item = self.issue_tree.selection()
+
+        if selected_item:
+            issue_id = self.issue_tree.item(selected_item, 'values')[0]
+
+            jira_link = f"https://umane.emeal.nttdata.com/jiraito/browse/{issue_id}"
+            print(jira_link)
+            webbrowser.open(jira_link)
 
     def export_results_correction(self):
         # Logique pour exporter les résultats
