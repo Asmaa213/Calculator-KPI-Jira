@@ -95,9 +95,31 @@ class MainWindow:
             "Number of Unestimated Tasks"
         ]
 
+        self.efficiency_fields = {}
+    
         for label in labels:
             ttk.Label(self.right_frame_evolution, text=label).pack(anchor=tk.W, padx=5, pady=5)
-            ttk.Entry(self.right_frame_evolution).pack(anchor=tk.W, padx=5, pady=5)
+            entry = ttk.Entry(self.right_frame_evolution)
+            entry.pack(anchor=tk.W, padx=5, pady=5)
+            self.efficiency_fields[label] = entry
+        
+        # L'entrée pour le "Cumulative Estimate (H)"
+        self.cumulative_estimate_entry = self.efficiency_fields["Cumulative Estimate (H)"]
+        # L'entrée pour le "Cumulative Incurred (H) (Including Tasks Without Estimate)"
+        self.cumulative_incurred_entry = self.efficiency_fields["Cumulative Incurred (H) (Including Tasks Without Estimate)"]
+        # L'entrée pour le "Cumulative Incurred (H) (Excluding Tasks Without Estimate)"
+        self.cumulative_incurred_without_estimate_entry = self.efficiency_fields["Cumulative Incurred (H) (Excluding Tasks Without Estimate)"]
+        # L'entrée pour le "Cumulative Efficiency (H)"
+        self.cumulative_efficiency_h_entry = self.efficiency_fields["Cumulative Efficiency (H)"]
+        # L'entrée pour le "Cumulative Efficiency (%)"
+        self.cumulative_efficiency_p_entry = self.efficiency_fields["Cumulative Efficiency (%)"]
+        # L'entrée pour le "Number of Efficient Tasks"
+        self.efficient_tasks_entry = self.efficiency_fields["Number of Efficient Tasks"]
+        # L'entrée pour le "Number of Inefficient Tasks"
+        self.inefficient_tasks_entry = self.efficiency_fields["Number of Inefficient Tasks"]
+        # L'entrée pour le "Number of Unestimated Tasks"
+        self.unestimated_tasks_entry = self.efficiency_fields["Number of Unestimated Tasks"]
+
 
     def create_correction_tab(self):
         # Cadre pour les boutons spécifiques à l'onglet "La correction"
@@ -255,9 +277,19 @@ class MainWindow:
 
         if selected_project and selected_user and date_start and date_end:
             issues = fetch__issues_evolution(selected_project, date_start, date_end, selected_user)
-            
+            # Calcul des tâches efficaces
+            nombre_taches_efficaces = self.calculer_taches_efficaces(issues)
+            nombre_taches_non_efficaces = self.calculer_taches_non_efficaces(issues)
+            cumulative_estimate = self.calculer_temps_estime_total(issues)
+            cumulative_incurred = self.calculer_temps_total_worklog(issues)
+            cumulative_incurred_without_estimate = self.calculer_temps_worklog_sans_estimation(issues)
+            cumulative_efficiency_h = cumulative_estimate - cumulative_incurred
+            cumulative_efficiency_p = (cumulative_estimate/cumulative_incurred) * 100
+            unestimated_tasks = self.compter_issues_sans_estimation(issues)
+
             if issues:
                 for issue in issues:
+
                     self.issue_tree1.insert('', 'end', values=(
                         issue['key'], 
                         issue['summary'], 
@@ -266,6 +298,38 @@ class MainWindow:
                     ))
             else:
                 tk.messagebox.showinfo("No Issues", "No issues found for the selected criteria.")
+
+            # Mettre à jour le champ "Cumulative Estimate (H)" avec le résultat
+            self.cumulative_estimate_entry.delete(0, tk.END)
+            self.cumulative_estimate_entry.insert(0, str(cumulative_estimate))
+
+            # Mettre à jour le champ "Cumulative Incurred (H) (Including Tasks Without Estimate)" avec le résultat
+            self.cumulative_incurred_entry.delete(0, tk.END)
+            self.cumulative_incurred_entry.insert(0, str(cumulative_incurred))
+
+            # Mettre à jour le champ "Number of Efficient Tasks" avec le résultat
+            self.efficient_tasks_entry.delete(0, tk.END)
+            self.efficient_tasks_entry.insert(0, str(nombre_taches_efficaces))
+
+            # Mettre à jour le champ "Cumulative Efficiency (H)" avec le résultat
+            self.cumulative_efficiency_h_entry.delete(0, tk.END)
+            self.cumulative_efficiency_h_entry.insert(0, str(cumulative_efficiency_h))
+
+            # Mettre à jour le champ "Cumulative Efficiency (%)" avec le résultat
+            self.cumulative_efficiency_p_entry.delete(0, tk.END)
+            self.cumulative_efficiency_p_entry.insert(0, str(cumulative_efficiency_p))
+
+            # Mettre à jour le champ "Cumulative Incurred (H) (Excluding Tasks Without Estimate)" avec le résultat
+            self.cumulative_incurred_without_estimate_entry.delete(0, tk.END)
+            self.cumulative_incurred_without_estimate_entry.insert(0, str(cumulative_incurred_without_estimate))
+
+            # Mettre à jour le champ "Number of Inefficient Tasks" avec le résultat
+            self.inefficient_tasks_entry.delete(0, tk.END)
+            self.inefficient_tasks_entry.insert(0, str(nombre_taches_non_efficaces))
+
+            # Mettre à jour le champ "Number of Unestimated Tasks" avec le résultat
+            self.unestimated_tasks_entry.delete(0, tk.END)
+            self.unestimated_tasks_entry.insert(0, str(unestimated_tasks))
 
             input_window1.destroy()
         else:
@@ -460,6 +524,90 @@ class MainWindow:
 
         except Exception as e:
             tk.messagebox.showwarning("Export Cancelled", f"Failed to export data: {e}")
+
+    def calculer_temps_estime_total(self, issues):
+        total_estimated_time = 0  
+
+        for issue in issues:
+            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
+            original_estimate_hours = original_estimate_seconds / 3600
+            total_estimated_time += original_estimate_hours
+
+        return total_estimated_time
+    
+    def calculer_temps_total_worklog(self, issues):
+        total_worklog_time = 0  
+
+        for issue in issues:
+            worklogs = issue.get('worklog', {}).get('worklogs', [])
+
+            for worklog in worklogs:
+                time_spent_seconds = worklog.get('timeSpentSeconds', 0)
+                total_worklog_time += time_spent_seconds
+        total_worklog_hours = total_worklog_time / 3600
+
+        return total_worklog_hours
+
+    def calculer_temps_worklog_sans_estimation(self, issues):
+        total_worklog_time_sans_estimation = 0
+
+        for issue in issues:
+            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
+            
+            if original_estimate_seconds == 0:
+                worklogs = issue.get('worklog', {}).get('worklogs', [])
+
+                for worklog in worklogs:
+                    time_spent_seconds = worklog.get('timeSpentSeconds', 0)
+                    total_worklog_time_sans_estimation += time_spent_seconds
+
+        total_worklog_hours_sans_estimation = total_worklog_time_sans_estimation / 3600
+        return total_worklog_hours_sans_estimation
+
+    
+    def calculer_taches_efficaces(self, issues):
+        nombre_taches_efficaces = 0
+
+        for issue in issues:
+            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
+            worklogs = issue.get('worklog', {}).get('worklogs', [])
+            total_time_spent_seconds = sum(entry.get('timeSpentSeconds', 0) for entry in worklogs)
+
+            if total_time_spent_seconds >= original_estimate_seconds:
+                nombre_taches_efficaces += 1
+
+        return nombre_taches_efficaces
+    
+    def calculer_taches_non_efficaces(self, issues):
+        nombre_taches_non_efficaces = 0
+
+        for issue in issues:
+            # Accéder à l'estimation originale en secondes
+            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
+            
+            # Accéder au temps total passé
+            worklogs = issue.get('worklog', {}).get('worklogs', [])
+            total_time_spent_seconds = sum(entry.get('timeSpentSeconds', 0) for entry in worklogs)
+
+            # Vérifier si le temps passé est inférieur à l'estimation
+            if total_time_spent_seconds < original_estimate_seconds:
+                nombre_taches_non_efficaces += 1
+
+        return nombre_taches_non_efficaces
+
+    def compter_issues_sans_estimation(self, issues):
+        nombre_issues_sans_estimation = 0
+
+        for issue in issues:
+            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
+            
+            if original_estimate_seconds == 0:
+                nombre_issues_sans_estimation += 1
+
+        return nombre_issues_sans_estimation
+
+
+
 
     def run(self):
         self.root.mainloop()
