@@ -77,6 +77,8 @@ class MainWindow:
 
         self.issue_tree1.pack(expand=True, anchor=tk.W, fill='both', padx=5, pady=5)
 
+        # Define a tag with a background color for issues without estimation
+        self.issue_tree1.tag_configure('no_estimate', background='orange')
         # Cadre de droite pour les détails d'efficience
         self.right_frame_evolution = ttk.Frame(self.main_frame_evolution)
         self.right_frame_evolution.pack(side=tk.RIGHT, fill='y', padx=5, pady=5)
@@ -289,13 +291,22 @@ class MainWindow:
 
             if issues:
                 for issue in issues:
+                    original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', None)
 
-                    self.issue_tree1.insert('', 'end', values=(
-                        issue['key'], 
-                        issue['summary'], 
-                        issue['status'], 
-                        issue['assignee']
-                    ))
+                    if original_estimate_seconds is None:
+                        self.issue_tree1.insert('', 'end', values=(
+                            issue['key'], 
+                            issue['summary'], 
+                            issue['status'], 
+                            issue['assignee']
+                        ), tags=('no_estimate',))
+                    else:
+                        self.issue_tree1.insert('', 'end', values=(
+                            issue['key'], 
+                            issue['summary'], 
+                            issue['status'], 
+                            issue['assignee']
+                        ))
             else:
                 tk.messagebox.showinfo("No Issues", "No issues found for the selected criteria.")
 
