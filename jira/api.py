@@ -25,9 +25,8 @@ def fetch_people_on_project(project_key):
     
 def fetch_issues(project_key, start_date, end_date):
     subtask_type = "Sub-task"
-    # Ajoutez des guillemets autour de project_key si ce n'est pas déjà le cas
     jql = f'project = "{project_key}" AND created >= "{start_date}" AND created <= "{end_date}" '
-    fields = 'key,summary,status,assignee,worklog,timetracking,changelog'
+    fields = 'key,summary,status,assignee,worklog,timetracking,changelog,issuetype'
     url = f"{JIRA_URL}/search?jql={jql}&fields={fields}"
     
     # Imprimez la requête JQL pour débogage
@@ -61,7 +60,7 @@ def fetch__issues_evolution(selected_project, date_start, date_end, selected_use
         f'assignee = "{selected_user}" AND '
         f'created >= "{date_start}" AND created <= "{date_end}"'
     )
-    fields = 'key,summary,status,assignee,worklog,timetracking,changelog'
+    fields = 'key,summary,status,assignee,worklog,timetracking,changelog,issuetype,customfield_22631,customfield_22634,tt_aggregate_table_info,tt_aggregate_values_orig'
     url = f"{JIRA_URL}/search?jql={jql}&fields={fields}"
     
     print(f"JQL Query: {jql}")
@@ -73,6 +72,10 @@ def fetch__issues_evolution(selected_project, date_start, date_end, selected_use
         issues = response.json().get('issues', [])
         parsed_issues = []
         for issue in issues:
+            sale_estimate = issue['fields'].get('customfield_22631', 0)
+            internal_estimate = issue['fields'].get('customfield_22634', 0)
+            estimate = issue['fields'].get('tt_aggregate_values_orig', None)
+            print(f"Issue {issue['key']} - Sale Estimate: {sale_estimate}, Internal Estimate: {internal_estimate}")
             parsed_issues.append({
                 'key': issue['key'],
                 'summary': issue['fields']['summary'],
@@ -80,9 +83,15 @@ def fetch__issues_evolution(selected_project, date_start, date_end, selected_use
                 'assignee': issue['fields']['assignee']['displayName'] if issue['fields']['assignee'] else 'Unassigned',
                 'worklog': issue['fields'].get('worklog', {}),
                 'timetracking': issue['fields'].get('timetracking', {}),
-                'changelog': issue.get('changelog', {})
+                'changelog': issue.get('changelog', {}),
+                'issuetype': issue['fields']['issuetype'],
+                'sale_estimate': sale_estimate, 
+                'internal_estimate': internal_estimate, 
+                'parent_task_timetracking': issue['fields'].get('tt_aggregate_table_info', {}),
+                'estimate': estimate,
             })
         return parsed_issues
     else:
         print(f"Failed to fetch issues: {response.status_code} - {response.text}")
         return None
+

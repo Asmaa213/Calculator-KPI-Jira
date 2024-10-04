@@ -9,6 +9,7 @@ from datetime import datetime
 import platform
 import subprocess
 from jira.api import fetch_people_on_project, fetch_issues, fetch_changelog_for_issue, fetch__issues_evolution 
+from config.config import TASK_URL
 
 class MainWindow:
     def __init__(self, projects):
@@ -45,12 +46,48 @@ class MainWindow:
         self.button_frame_evolution = ttk.Frame(self.tab_evolution)
         self.button_frame_evolution.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-        self.input_button_evolution = ttk.Button(self.button_frame_evolution, text="Refresh Information", command=self.open_input_window_evolution)
-        self.input_button_evolution.pack(side=tk.LEFT, padx=5)
+        # Cadre pour les filtres (projects, users, start date, end date)
+        self.filter_frame_evolution = ttk.LabelFrame(self.tab_evolution, text="Filtres", borderwidth=5, relief="groove", width=100)  
+        self.filter_frame_evolution.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-        self.export_button_evolution = ttk.Button(self.button_frame_evolution, text="Export to Excel", command=self.export_results_evolution)
-        self.export_button_evolution.pack(side=tk.LEFT, padx=5)
+        # Label and dropdown for Projects
+        self.project_label = ttk.Label(self.filter_frame_evolution, text="Project:")
+        self.project_label.grid(row=0, column=0, padx=5, sticky='w')
+        project_names = [project['name'] for project in self.projects]
+        self.project_combobox_evol = ttk.Combobox(self.filter_frame_evolution, values=project_names, state="readonly", width=20)
+        self.project_combobox_evol.grid(row=0, column=1, padx=5, sticky='w')
+        self.project_combobox_evol.bind("<<ComboboxSelected>>", self.update_user_combobox)
 
+        # Label and dropdown for Users
+        self.user_label = ttk.Label(self.filter_frame_evolution, text="Users full name:")
+        self.user_label.grid(row=0, column=2, padx=5, sticky='w')
+
+        self.user_combobox = ttk.Combobox(self.filter_frame_evolution, state="readonly", width=20)
+        self.user_combobox.grid(row=0, column=3, padx=5, sticky='w')
+
+        # Label and DateEntry for Start Date
+        self.start_date_label = ttk.Label(self.filter_frame_evolution, text="Start Date:")
+        self.start_date_label.grid(row=1, column=0, padx=5, sticky='w')
+
+        self.start_date_entry_evol = DateEntry(self.filter_frame_evolution, width=12, background='darkblue', foreground='white', borderwidth=2)
+        self.start_date_entry_evol.grid(row=1, column=1, padx=5, sticky='w')
+
+        # Label and DateEntry for End Date
+        self.end_date_label = ttk.Label(self.filter_frame_evolution, text="End Date:")
+        self.end_date_label.grid(row=1, column=2, padx=5, sticky='w')
+
+        self.end_date_entry_evol = DateEntry(self.filter_frame_evolution, width=12, background='darkblue', foreground='white', borderwidth=2)
+        self.end_date_entry_evol.grid(row=1, column=3, padx=5, sticky='w')
+
+        # Buttons directly under the date fields
+        self.input_button_evolution = ttk.Button(self.filter_frame_evolution, text="Refresh Information", command=self.submit_evolution)
+        self.input_button_evolution.grid(row=2, column=1, padx=5, pady=5, sticky='w')
+
+        self.export_button_evolution = ttk.Button(self.filter_frame_evolution, text="Export to Excel", command=self.export_results_evolution)
+        self.export_button_evolution.grid(row=2, column=2, padx=5, pady=5, sticky='w')
+
+
+        
         # Cadre principal de l'onglet évolution
         self.main_frame_evolution = ttk.Frame(self.tab_evolution)
         self.main_frame_evolution.pack(expand=True, fill='both', padx=5, pady=5)
@@ -76,7 +113,7 @@ class MainWindow:
         self.issue_tree1.column("Assignee", width=100)
 
         self.issue_tree1.pack(expand=True, anchor=tk.W, fill='both', padx=5, pady=5)
-
+        self.issue_tree1.bind("<Double-1>", self.open_jira_task_evolution)
         # Define a tag with a background color for issues without estimation
         self.issue_tree1.tag_configure('no_estimate', background='orange')
         # Cadre de droite pour les détails d'efficience
@@ -128,11 +165,51 @@ class MainWindow:
         self.button_frame_correction = ttk.Frame(self.tab_correction)
         self.button_frame_correction.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-        self.input_button_correction = ttk.Button(self.button_frame_correction, text="Refresh Information", command=self.open_input_window_correction)
+        
+        # Cadre pour les filtres de project et dates, avec bordure visible et titre
+        # Cadre pour les filtres de project et dates
+        self.filter_frame_correction = ttk.LabelFrame(self.tab_correction, text="Filtres", borderwidth=5, relief="groove", width=80)
+        self.filter_frame_correction.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+
+        # Sub-frame for Project Dropdown, Start Date, and End Date (aligned horizontally)
+        self.fields_subframe = ttk.Frame(self.filter_frame_correction)
+        self.fields_subframe.pack(side=tk.TOP, anchor='w', padx=5, pady=5)
+
+        # Label and dropdown for Projects
+        self.project_label = ttk.Label(self.fields_subframe, text="Project:")
+        self.project_label.pack(side=tk.LEFT, padx=5, pady=5)
+
+        project_names = [project['name'] for project in self.projects]
+        self.project_combobox = ttk.Combobox(self.fields_subframe, values=project_names, state="readonly", width=20)
+        self.project_combobox.pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Label and DateEntry for Start Date
+        self.start_date_label = ttk.Label(self.fields_subframe, text="Start Date:")
+        self.start_date_label.pack(side=tk.LEFT, padx=5, pady=5)
+
+        self.start_date_entry = DateEntry(self.fields_subframe, width=18, background='darkblue', foreground='white', borderwidth=2)
+        self.start_date_entry.pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Label and DateEntry for End Date
+        self.end_date_label = ttk.Label(self.fields_subframe, text="End Date:")
+        self.end_date_label.pack(side=tk.LEFT, padx=5, pady=5)
+
+        self.end_date_entry = DateEntry(self.fields_subframe, width=18, background='darkblue', foreground='white', borderwidth=2)
+        self.end_date_entry.pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Sub-frame for buttons (placed below the fields, aligned to the left)
+        self.button_frame_correction = ttk.Frame(self.filter_frame_correction)
+        self.button_frame_correction.pack(side=tk.TOP, anchor='w', padx=5, pady=10)
+
+        # Input and Export buttons placed under the fields, aligned left
+        self.input_button_correction = ttk.Button(self.button_frame_correction, text="Refresh Information", command=self.submit_correction)
         self.input_button_correction.pack(side=tk.LEFT, padx=5)
 
         self.export_button_correction = ttk.Button(self.button_frame_correction, text="Export to Excel", command=self.export_results_correction)
         self.export_button_correction.pack(side=tk.LEFT, padx=5)
+
+
+
 
         # Cadre principal de l'onglet correction
         self.main_frame_correction = ttk.Frame(self.tab_correction)
@@ -166,10 +243,10 @@ class MainWindow:
         self.issue_tree.column("Cause", width=300)
 
         self.issue_tree.pack(expand=True, fill='both', padx=5, pady=5)
-        self.issue_tree.bind("<Double-1>", self.open_jira_task)
+        self.issue_tree.bind("<Double-1>", self.open_jira_task_correction)
 
 
-    def open_input_window_correction(self):
+    """def open_input_window_correction(self):
         # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
         input_window = tk.Toplevel(self.root)
         input_window.title("Refresh Information")
@@ -204,9 +281,9 @@ class MainWindow:
         self.end_date_entry.pack(side=tk.LEFT, padx=5, pady=5)
 
         submit_button_correction = ttk.Button(input_window, text="Submit", command=lambda: self.submit_correction(input_window))
-        submit_button_correction.pack(anchor=tk.W, padx=5, pady=5)
+        submit_button_correction.pack(anchor=tk.W, padx=5, pady=5)"""
 
-    def open_input_window_evolution(self):
+    """def open_input_window_evolution(self):
         # Logique pour ouvrir une nouvelle fenêtre d'entrée des informations
         input_window1 = tk.Toplevel(self.root)
         input_window1.title("Refresh Information")
@@ -248,30 +325,42 @@ class MainWindow:
         self.date_end.pack(side=tk.LEFT, padx=5, pady=5)
 
         submit_button_evolution = ttk.Button(input_window1, text="Submit", command=lambda: self.submit_evolution(input_window1))
-        submit_button_evolution.pack(anchor=tk.W, padx=5, pady=5)
+        submit_button_evolution.pack(anchor=tk.W, padx=5, pady=5)"""
 
     def update_user_combobox(self, event):
-        project_name = self.combobox2.get()
+        # Get the selected project name from the combobox
+        project_name = self.project_combobox_evol.get()
+
+        # Check if the projects list contains the selected project
         selected_project = next((project for project in self.projects if project['name'] == project_name), None)
 
         if selected_project:
-            project_key = selected_project['key']
-            people = fetch_people_on_project(project_key)
+            # Get the project key of the selected project
+            project_key = selected_project.get('key', None)
 
-            if people:
-                user_names = [person['displayName'] for person in people]
-                self.combobox['values'] = user_names
-                self.combobox.set('')  
+            if project_key:
+                # Fetch the people assigned to the project
+                people = fetch_people_on_project(project_key)
+
+                if people:
+                    # Populate the user combobox with the display names of the people
+                    user_names = [person['displayName'] for person in people]
+                    self.user_combobox['values'] = user_names
+                else:
+                    messagebox.showerror("Error", "Unable to retrieve people for this project")
             else:
-                messagebox.showerror("Error", "Unable to retrieve people for this project")
+                messagebox.showerror("Error", "Project key not found")
         else:
+            # Print project names for debugging purposes
+            print("Available projects:", [project['name'] for project in self.projects])
             messagebox.showerror("Error", "Project not found")
 
-    def submit_evolution(self, input_window1):
-        selected_project = self.combobox2.get()
-        selected_user = self.combobox.get()
-        date_start = self.date_start.get_date()
-        date_end = self.date_end.get_date()
+
+    def submit_evolution(self):
+        selected_project = self.project_combobox_evol.get()
+        selected_user = self.user_combobox.get()
+        date_start = self.start_date_entry_evol.get_date()
+        date_end = self.end_date_entry_evol.get_date()
 
         # Clear the Treeview before inserting new data
         for item in self.issue_tree1.get_children():
@@ -279,34 +368,59 @@ class MainWindow:
 
         if selected_project and selected_user and date_start and date_end:
             issues = fetch__issues_evolution(selected_project, date_start, date_end, selected_user)
-            # Calcul des tâches efficaces
             nombre_taches_efficaces = self.calculer_taches_efficaces(issues)
             nombre_taches_non_efficaces = self.calculer_taches_non_efficaces(issues)
             cumulative_estimate = self.calculer_temps_estime_total(issues)
             cumulative_incurred = self.calculer_temps_total_worklog(issues)
             cumulative_incurred_without_estimate = self.calculer_temps_worklog_sans_estimation(issues)
             cumulative_efficiency_h = cumulative_estimate - cumulative_incurred
-            cumulative_efficiency_p = (cumulative_estimate/cumulative_incurred) * 100
+            if cumulative_incurred != 0:
+                cumulative_efficiency_p = (cumulative_estimate / cumulative_incurred) * 100
+            else:
+                cumulative_efficiency_p = 0
             unestimated_tasks = self.compter_issues_sans_estimation(issues)
 
             if issues:
                 for issue in issues:
-                    original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', None)
+                    print(issue)
+                    issuetype = issue.get('issuetype', {})  
+                    is_subtask = issuetype.get('subtask', False)
+                    issuetype_name = issuetype.get('name', '').lower()
 
-                    if original_estimate_seconds is None:
-                        self.issue_tree1.insert('', 'end', values=(
-                            issue['key'], 
-                            issue['summary'], 
-                            issue['status'], 
-                            issue['assignee']
-                        ), tags=('no_estimate',))
+                    if is_subtask or "sub-task" in issuetype_name:
+                        original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', None)
+                        if original_estimate_seconds is None :
+                            self.issue_tree1.insert('', 'end', values=(
+                                issue['key'], 
+                                issue['summary'], 
+                                issue['status'], 
+                                issue['assignee']
+                            ), tags=('no_estimate',))
+                        else:
+                            self.issue_tree1.insert('', 'end', values=(
+                                issue['key'], 
+                                issue['summary'], 
+                                issue['status'], 
+                                issue['assignee']
+                            ))
                     else:
-                        self.issue_tree1.insert('', 'end', values=(
-                            issue['key'], 
-                            issue['summary'], 
-                            issue['status'], 
-                            issue['assignee']
-                        ))
+                        sale_estimate = issue.get('sale_estimate', None)  
+                        internal_estimate = issue.get('internal_estimate', None) 
+
+                        if (sale_estimate is None or sale_estimate == 0) and (internal_estimate is None or internal_estimate == 0):
+                            self.issue_tree1.insert('', 'end', values=(
+                                issue['key'], 
+                                issue['summary'], 
+                                issue['status'], 
+                                issue['assignee']
+                            ), tags=('no_estimate',))
+                        else:
+                            self.issue_tree1.insert('', 'end', values=(
+                                issue['key'], 
+                                issue['summary'], 
+                                issue['status'], 
+                                issue['assignee']
+                            ))
             else:
                 tk.messagebox.showinfo("No Issues", "No issues found for the selected criteria.")
 
@@ -342,12 +456,11 @@ class MainWindow:
             self.unestimated_tasks_entry.delete(0, tk.END)
             self.unestimated_tasks_entry.insert(0, str(unestimated_tasks))
 
-            input_window1.destroy()
         else:
             tk.messagebox.showwarning("Input Error", "Please fill in all fields.")
 
-    def submit_correction(self, input_window):
-        selected_project = self.combobox_project_var.get()
+    def submit_correction(self):
+        selected_project = self.project_combobox.get()
         start_date = self.start_date_entry.get_date()
         end_date = self.end_date_entry.get_date()
 
@@ -363,6 +476,7 @@ class MainWindow:
 
         # Filtrer et remplir le tableau avec les nouvelles issues
         for issue in issues:
+            print(issue)
             issue_id = issue['key']
             issue_summary = issue['fields']['summary']
             issue_status = issue['fields']['status']['name']
@@ -398,15 +512,15 @@ class MainWindow:
             worklog_authors = set()
             if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
                 worklog_authors.update(entry['author']['displayName'] for entry in issue['fields']['worklog']['worklogs'])
-
-            changelog = fetch_changelog_for_issue(issue_id)
+                
+            """changelog = fetch_changelog_for_issue(issue_id)
 
             if changelog:
                 print("Changelog trouvé!")
                 changelog_authors = {entry['author']['displayName'] for entry in changelog['histories']}
                 worklog_authors.update(changelog_authors)
             else:
-                print("Le changelog n'a pas été trouvé dans l'issue")
+                print("Le changelog n'a pas été trouvé dans l'issue")"""
 
             if len(worklog_authors) > 1:
                 causes.append("Issue with modifications by multiple users")
@@ -451,15 +565,25 @@ class MainWindow:
             for cause in causes:
                 self.issue_tree.insert("", "end", values=(issue_id, issue_summary, issue_status, issue_assignee, total_time_spent, issue_estimation, issue_etc, cause))
 
-        input_window.destroy()
+        
 
-    def open_jira_task(self, event):
+    def open_jira_task_correction(self, event):
         selected_item = self.issue_tree.selection()
 
         if selected_item:
             issue_id = self.issue_tree.item(selected_item, 'values')[0]
 
-            jira_link = f"https://umane.emeal.nttdata.com/jiraito/browse/{issue_id}"
+            jira_link = f"{TASK_URL}/{issue_id}"
+
+            webbrowser.open(jira_link)
+
+    def open_jira_task_evolution(self, event):
+        selected_item1 = self.issue_tree1.selection()
+
+        if selected_item1:
+            issue_id = self.issue_tree1.item(selected_item1, 'values')[0]
+
+            jira_link = f"{TASK_URL}/{issue_id}"
 
             webbrowser.open(jira_link)
 
@@ -580,28 +704,36 @@ class MainWindow:
         nombre_taches_efficaces = 0
 
         for issue in issues:
-            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
-            worklogs = issue.get('worklog', {}).get('worklogs', [])
-            total_time_spent_seconds = sum(entry.get('timeSpentSeconds', 0) for entry in worklogs)
+            issuetype = issue.get('issuetype', {})  
+            is_subtask = issuetype.get('subtask', False)
+            issuetype_name = issuetype.get('name', '').lower()
 
-            if total_time_spent_seconds >= original_estimate_seconds:
-                nombre_taches_efficaces += 1
+            if is_subtask or "sub-task" in issuetype_name:
+                original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
+                worklogs = issue.get('worklog', {}).get('worklogs', [])
+                total_time_spent_seconds = sum(entry.get('timeSpentSeconds', 0) for entry in worklogs)
 
+                if total_time_spent_seconds <= original_estimate_seconds:
+                    nombre_taches_efficaces += 1
+            else:
+                sale_estimate = issue.get('sale_estimate') or 0  # Provide default value 0 if None
+                estimate = issue.get('estimate') or 0  # Provide default value 0 if None
+
+                if estimate <= sale_estimate:
+                    nombre_taches_efficaces += 1
+                    
         return nombre_taches_efficaces
-    
+
     def calculer_taches_non_efficaces(self, issues):
         nombre_taches_non_efficaces = 0
 
         for issue in issues:
-            # Accéder à l'estimation originale en secondes
             original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
             
-            # Accéder au temps total passé
             worklogs = issue.get('worklog', {}).get('worklogs', [])
             total_time_spent_seconds = sum(entry.get('timeSpentSeconds', 0) for entry in worklogs)
 
-            # Vérifier si le temps passé est inférieur à l'estimation
-            if total_time_spent_seconds < original_estimate_seconds:
+            if total_time_spent_seconds > original_estimate_seconds:
                 nombre_taches_non_efficaces += 1
 
         return nombre_taches_non_efficaces
@@ -610,12 +742,32 @@ class MainWindow:
         nombre_issues_sans_estimation = 0
 
         for issue in issues:
-            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
-            
-            if original_estimate_seconds == 0:
-                nombre_issues_sans_estimation += 1
+            issuetype = issue.get('issuetype', {})  
+            is_subtask = issuetype.get('subtask', False)
+            issuetype_name = issuetype.get('name', '').lower()
 
+            if is_subtask or "sub-task" in issuetype_name:
+                original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
+                if original_estimate_seconds == 0:
+                    nombre_issues_sans_estimation += 1
+                    print(f"Issue {issue.get('key')} => Sous-tâche sans estimation détectée.")
+            else:
+                sale_estimate = issue.get('sale_estimate', None)  
+                internal_estimate = issue.get('internal_estimate', None) 
+
+                print(f"Issue {issue.get('key')} - customfield_22631: {sale_estimate}, customfield_22634: {internal_estimate}")
+
+                if (sale_estimate is None or sale_estimate == 0) and (internal_estimate is None or internal_estimate == 0):
+                    nombre_issues_sans_estimation += 1
+                    print(f"=> Tâche parent sans estimation détectée.")
+
+        print(f"Nombre total d'issues sans estimation : {nombre_issues_sans_estimation}")
         return nombre_issues_sans_estimation
+
+
+
+
+
 
 
 
