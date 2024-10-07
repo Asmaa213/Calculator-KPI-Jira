@@ -373,9 +373,9 @@ class MainWindow:
             cumulative_estimate = self.calculer_temps_estime_total(issues)
             cumulative_incurred = self.calculer_temps_total_worklog(issues)
             cumulative_incurred_without_estimate = self.calculer_temps_worklog_sans_estimation(issues)
-            cumulative_efficiency_h = cumulative_estimate - cumulative_incurred
+            cumulative_efficiency_h = round(cumulative_estimate - cumulative_incurred,2)
             if cumulative_incurred != 0:
-                cumulative_efficiency_p = (cumulative_estimate / cumulative_incurred) * 100
+                cumulative_efficiency_p = round((cumulative_estimate / cumulative_incurred) * 100,2)
             else:
                 cumulative_efficiency_p = 0
             unestimated_tasks = self.compter_issues_sans_estimation(issues)
@@ -483,49 +483,72 @@ class MainWindow:
             issue_assignee = issue['fields']['assignee']['displayName'] if issue['fields']['assignee'] else 'Unassigned'
 
             causes = []
-
-            # Condition 1: Issues sans estimation
-            if 'timetracking' in issue['fields'] and 'originalEstimateSeconds' not in issue['fields']['timetracking'] :
-                causes.append("Issue without estimate")
-
-            # Condition 2: Issues avec un worklog différent de 0 et status open
-            if issue_status == 'Open' and 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
-                total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs'])
-                if total_time_spent > 0:
-                    causes.append("Issue with worklog and status Open")
-
-            # Condition 3: Issues sans worklog et status différent de open
-            if issue_status != 'Open' and ('worklog' not in issue['fields'] or 'worklogs' not in issue['fields']['worklog'] or sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) == 0):
-                causes.append("Issue without worklog and status different from Open")
-            
-            # Condition 4: Issues livrées (statut = Done) avec ETC différent de 0
-            if (issue_status == 'Done' or issue_status == 'Delivered') and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
-                if issue['fields']['timetracking']['remainingEstimateSeconds'] != 0:
-                    causes.append("Delivered issue with ETC different from 0")
-            
-            # Condition 5: Issues dont le statut est différent de done et ETC = 0
-            if (issue_status != 'Done' and issue_status != 'Delivered') and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
-                if issue['fields']['timetracking']['remainingEstimateSeconds'] == 0:
-                    causes.append("Undelivered issue with ETC = 0")
-            
-            # Condition 6: Issues dont plusieurs personnes ont modifié dans le même worklog
-            worklog_authors = set()
-            if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
-                worklog_authors.update(entry['author']['displayName'] for entry in issue['fields']['worklog']['worklogs'])
+            issuetype = issue.get('issuetype', {})  
+            is_subtask = issuetype.get('subtask', False)
+            issuetype_name = issuetype.get('name', '').lower()
+            if is_subtask or "sub-task" in issuetype_name:
+                # Condition 1: Issues sans estimation
                 
-            """changelog = fetch_changelog_for_issue(issue_id)
+                if 'timetracking' in issue['fields'] and 'originalEstimateSeconds' not in issue['fields']['timetracking'] :
+                    causes.append("Issue without estimate")
 
-            if changelog:
-                print("Changelog trouvé!")
-                changelog_authors = {entry['author']['displayName'] for entry in changelog['histories']}
-                worklog_authors.update(changelog_authors)
+                # Condition 2: Issues avec un worklog différent de 0 et status open
+                if issue_status == 'Open' and 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
+                    total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs'])
+                    if total_time_spent > 0:
+                        causes.append("Issue with worklog and status Open")
+
+                # Condition 3: Issues sans worklog et status différent de open
+                if issue_status != 'Open' and ('worklog' not in issue['fields'] or 'worklogs' not in issue['fields']['worklog'] or sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs']) == 0):
+                    causes.append("Issue without worklog and status different from Open")
+                
+                # Condition 4: Issues livrées (statut = Done) avec ETC différent de 0
+                if (issue_status == 'Done' or issue_status == 'Delivered') and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
+                    if issue['fields']['timetracking']['remainingEstimateSeconds'] != 0:
+                        causes.append("Delivered issue with ETC different from 0")
+                
+                # Condition 5: Issues dont le statut est différent de done et ETC = 0
+                if (issue_status != 'Done' and issue_status != 'Delivered') and 'timetracking' in issue['fields'] and 'remainingEstimateSeconds' in issue['fields']['timetracking']:
+                    if issue['fields']['timetracking']['remainingEstimateSeconds'] == 0:
+                        causes.append("Undelivered issue with ETC = 0")
+                
+                # Condition 6: Issues dont plusieurs personnes ont modifié dans le même worklog
+                worklog_authors = set()
+                if 'worklog' in issue['fields'] and 'worklogs' in issue['fields']['worklog']:
+                    worklog_authors.update(entry['author']['displayName'] for entry in issue['fields']['worklog']['worklogs'])
+                    
+                if len(worklog_authors) > 1:
+                    causes.append("Issue with modifications by multiple users")
+                    print("Auteurs du worklog :", worklog_authors)
             else:
-                print("Le changelog n'a pas été trouvé dans l'issue")"""
 
-            if len(worklog_authors) > 1:
-                causes.append("Issue with modifications by multiple users")
+                # Condition 1: Issues sans estimation
+                sale_estimate = issue.get('sale_estimate') or 0 
+                if sale_estimate == 0 :
+                    causes.append("Issue without estimate")
+
+                # Condition 2: Issues avec un worklog différent de 0 et status open
+                parent_logged = issue.get('parent_logged') or 0 
+                if issue_status == 'Open' and parent_logged != 0:
+                    total_time_spent = sum(entry['timeSpentSeconds'] for entry in issue['fields']['worklog']['worklogs'])
+                    if total_time_spent > 0:
+                        causes.append("Issue with worklog and status Open")
+
+                # Condition 3: Issues sans worklog et status différent de open
+                if issue_status != 'Open' and parent_logged == 0:
+                    causes.append("Issue without worklog and status different from Open")
+                
+                # Condition 4: Issues livrées (statut = Done) avec ETC différent de 0
+                parent_remaining = issue.get('aggregatetimeestimate', 0)
+                if (issue_status == 'Done' or issue_status == 'Delivered') and parent_remaining != 0:
+                    causes.append("Delivered issue with ETC different from 0")
+                
+                # Condition 5: Issues dont le statut est différent de done et ETC = 0
+                if (issue_status != 'Done' and issue_status != 'Delivered') and parent_remaining == 0:
+                    causes.append("Undelivered issue with ETC = 0")
+                
+                
             
-            print("Auteurs du worklog :", worklog_authors)
 
             if not causes:
                 continue
@@ -652,9 +675,9 @@ class MainWindow:
             # Open the file automatically after export
             if platform.system() == 'Windows':
                 os.startfile(file_path1)
-            elif platform.system() == 'Darwin':  # macOS
+            elif platform.system() == 'Darwin':  
                 subprocess.call(('open', file_path1))
-            else:  # Linux
+            else:  
                 subprocess.call(('xdg-open', file_path1))
 
         except Exception as e:
@@ -664,40 +687,66 @@ class MainWindow:
         total_estimated_time = 0  
 
         for issue in issues:
-            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
-            original_estimate_hours = original_estimate_seconds / 3600
-            total_estimated_time += original_estimate_hours
+            issuetype = issue.get('issuetype', {})  
+            is_subtask = issuetype.get('subtask', False)
+            issuetype_name = issuetype.get('name', '').lower()
 
-        return total_estimated_time
+            if is_subtask or "sub-task" in issuetype_name:
+                original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
+                original_estimate_hours = original_estimate_seconds / 3600
+                total_estimated_time += original_estimate_hours
+            else:
+                # Si parent_estimate_seconds est None, on le remplace par 0
+                parent_estimate_seconds = issue.get('parent_estimate') or 0
+                parent_estimate_hours = int(parent_estimate_seconds) / 3600  # Conversion en int et division
+                total_estimated_time += parent_estimate_hours
+
+        return round(total_estimated_time, 2)
+
     
     def calculer_temps_total_worklog(self, issues):
         total_worklog_time = 0  
 
         for issue in issues:
-            worklogs = issue.get('worklog', {}).get('worklogs', [])
+            issuetype = issue.get('issuetype', {})  
+            is_subtask = issuetype.get('subtask', False)
+            issuetype_name = issuetype.get('name', '').lower()
+            if is_subtask or "sub-task" in issuetype_name:
+                worklogs = issue.get('worklog', {}).get('worklogs', [])
 
-            for worklog in worklogs:
-                time_spent_seconds = worklog.get('timeSpentSeconds', 0)
-                total_worklog_time += time_spent_seconds
+                for worklog in worklogs:
+                    time_spent_seconds = worklog.get('timeSpentSeconds', 0)
+                    total_worklog_time += time_spent_seconds
+            else:
+                parent_logged = issue.get('parent_logged') or 0 
+                total_worklog_time += parent_logged
+
         total_worklog_hours = total_worklog_time / 3600
 
-        return total_worklog_hours
+        return round(total_worklog_hours,2)
 
     def calculer_temps_worklog_sans_estimation(self, issues):
         total_worklog_time_sans_estimation = 0
 
         for issue in issues:
-            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
-            
-            if original_estimate_seconds == 0:
-                worklogs = issue.get('worklog', {}).get('worklogs', [])
+            issuetype = issue.get('issuetype', {})  
+            is_subtask = issuetype.get('subtask', False)
+            issuetype_name = issuetype.get('name', '').lower()
+            if is_subtask or "sub-task" in issuetype_name:
+                original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0) 
+                
+                if original_estimate_seconds == 0 :
+                    worklogs = issue.get('worklog', {}).get('worklogs', [])
 
-                for worklog in worklogs:
-                    time_spent_seconds = worklog.get('timeSpentSeconds', 0)
-                    total_worklog_time_sans_estimation += time_spent_seconds
+                    for worklog in worklogs:
+                        time_spent_seconds = worklog.get('timeSpentSeconds', 0)
+                        total_worklog_time_sans_estimation += time_spent_seconds
+            else:
+                parent_logged = issue.get('parent_logged') or 0 
+                total_worklog_time_sans_estimation += parent_logged
 
         total_worklog_hours_sans_estimation = total_worklog_time_sans_estimation / 3600
-        return total_worklog_hours_sans_estimation
+        return round(total_worklog_hours_sans_estimation,2)
 
     
     def calculer_taches_efficaces(self, issues):
@@ -716,10 +765,11 @@ class MainWindow:
                 if total_time_spent_seconds <= original_estimate_seconds:
                     nombre_taches_efficaces += 1
             else:
-                sale_estimate = issue.get('sale_estimate') or 0  # Provide default value 0 if None
-                estimate = issue.get('estimate') or 0  # Provide default value 0 if None
+                sale_estimate = issue.get('sale_estimate') or 0  
+                parent_estimate = issue.get('parent_estimate') or 0  
+                parent_logged = issue.get('parent_logged') or 0 
 
-                if estimate <= sale_estimate:
+                if parent_estimate <= parent_logged:
                     nombre_taches_efficaces += 1
                     
         return nombre_taches_efficaces
@@ -728,16 +778,27 @@ class MainWindow:
         nombre_taches_non_efficaces = 0
 
         for issue in issues:
-            original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
-            
-            worklogs = issue.get('worklog', {}).get('worklogs', [])
-            total_time_spent_seconds = sum(entry.get('timeSpentSeconds', 0) for entry in worklogs)
+            issuetype = issue.get('issuetype', {})  
+            is_subtask = issuetype.get('subtask', False)
+            issuetype_name = issuetype.get('name', '').lower()
 
-            if total_time_spent_seconds > original_estimate_seconds:
-                nombre_taches_non_efficaces += 1
+            if is_subtask or "sub-task" in issuetype_name:
+                original_estimate_seconds = issue.get('timetracking', {}).get('originalEstimateSeconds', 0)
+                worklogs = issue.get('worklog', {}).get('worklogs', [])
+                total_time_spent_seconds = sum(entry.get('timeSpentSeconds', 0) for entry in worklogs)
 
+                if total_time_spent_seconds > original_estimate_seconds:
+                    nombre_taches_non_efficaces += 1
+            else:
+                sale_estimate = issue.get('sale_estimate') or 0  
+                parent_estimate = issue.get('parent_estimate') or 0  
+                parent_logged = issue.get('parent_logged') or 0 
+
+                if parent_estimate > parent_logged:
+                    nombre_taches_non_efficaces += 1
+                    
         return nombre_taches_non_efficaces
-
+    
     def compter_issues_sans_estimation(self, issues):
         nombre_issues_sans_estimation = 0
 

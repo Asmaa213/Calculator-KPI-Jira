@@ -60,7 +60,7 @@ def fetch__issues_evolution(selected_project, date_start, date_end, selected_use
         f'assignee = "{selected_user}" AND '
         f'created >= "{date_start}" AND created <= "{date_end}"'
     )
-    fields = 'key,summary,status,assignee,worklog,timetracking,changelog,issuetype,customfield_22631,customfield_22634,tt_aggregate_table_info,tt_aggregate_values_orig'
+    fields = 'key,summary,status,assignee,worklog,timetracking,changelog,issuetype,customfield_22631,customfield_22634,aggregatetimeoriginalestimate,aggregatetimespent,aggregatetimeestimate'
     url = f"{JIRA_URL}/search?jql={jql}&fields={fields}"
     
     print(f"JQL Query: {jql}")
@@ -74,7 +74,9 @@ def fetch__issues_evolution(selected_project, date_start, date_end, selected_use
         for issue in issues:
             sale_estimate = issue['fields'].get('customfield_22631', 0)
             internal_estimate = issue['fields'].get('customfield_22634', 0)
-            estimate = issue['fields'].get('tt_aggregate_values_orig', None)
+            parent_estimate = issue['fields'].get('aggregatetimeoriginalestimate', 0)
+            parent_logged = issue['fields'].get('aggregatetimespent', 0)
+            parent_remaining = issue['fields'].get('aggregatetimeestimate', 0)
             print(f"Issue {issue['key']} - Sale Estimate: {sale_estimate}, Internal Estimate: {internal_estimate}")
             parsed_issues.append({
                 'key': issue['key'],
@@ -87,8 +89,9 @@ def fetch__issues_evolution(selected_project, date_start, date_end, selected_use
                 'issuetype': issue['fields']['issuetype'],
                 'sale_estimate': sale_estimate, 
                 'internal_estimate': internal_estimate, 
-                'parent_task_timetracking': issue['fields'].get('tt_aggregate_table_info', {}),
-                'estimate': estimate,
+                'parent_estimate': parent_estimate,
+                'parent_logged': parent_logged,
+                'parent_remaining': parent_remaining
             })
         return parsed_issues
     else:
